@@ -5,36 +5,11 @@ version '0.8.4'
 
 sourceCompatibility = 1.5
 
-dependencies {
-    testCompile 'junit:junit:+'
-}
-
-repositories {
-    jcenter()
-}
-
 jar {
     baseName = project.name
     manifest {
         attributes 'Manifest-Version' : '1.0'
         attributes 'Implementation-Version': version
         attributes 'Main-Class': "net.sourceforge.jaad.Radio"
-    }
-}
-
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-artifacts {
-    archives sourcesJar
-}
-
-tasks.withType(Zip) {
-    task ->
-
-    task.doLast {
-        ant.checksum file: it.archivePath
     }
 }
