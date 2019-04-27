@@ -153,6 +153,9 @@ and an actual frequency.
 For decoding the nominal frequency must be used while the output rate must use
 the actual frequency. In most cases actual and nominal frequencies are identical.  
 
+**2019-04-27**
+
+Switched to Java11. 
 **2020-09-18**
 
 upgrade to gradle 6.6.1

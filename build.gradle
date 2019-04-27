@@ -9,7 +9,7 @@ allprojects {
 
     plugins.withType(JavaPlugin) {
         
-        sourceCompatibility = 8
+        sourceCompatibility = 11
 
         idea {
             module {
