@@ -39,7 +39,7 @@ public class Decoder {
 	}
 
 	public static Decoder create(BitStream in) {
-		DecoderConfig config = DecoderConfig.decode(in);
+		DecoderConfig config = new DecoderConfig().decode(in);
 		return create(config);
 	}
 
@@ -107,10 +107,8 @@ public class Decoder {
 	private void decode(BitStream in, SampleBuffer buffer) {
 		if(ADIFHeader.isPresent(in)) {
 			adifHeader = ADIFHeader.readHeader(in);
-			final PCE pce = adifHeader.getFirstPCE();
-			config.setProfile(pce.getProfile());
-			config.setSampleFrequency(pce.getSampleFrequency());
-			config.setChannelConfiguration(ChannelConfiguration.forInt(pce.getChannelCount()));
+			PCE pce = adifHeader.getFirstPCE();
+			config.setAudioDecoderInfo(pce);
 		}
 
 		if(!canDecode(config.getProfile()))

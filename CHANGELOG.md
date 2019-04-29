@@ -126,3 +126,8 @@ DRC is currently unused but was extracted to a separate class with its own decod
 If used in future it should saved by SyntacticElements along with its PCE.
 Then FIL elements turn to be empty and need no saving/caching any more.
 
+**2019-04-29**
+
+DecoderConfig parsing as member function. Setup AudioDecoderInfo by PCE via interface.
+
+

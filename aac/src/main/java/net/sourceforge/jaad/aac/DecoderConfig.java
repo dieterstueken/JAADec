@@ -25,49 +25,34 @@ public class DecoderConfig {
 	//extension: error resilience
 	private boolean sectionDataResilience=false, scalefactorResilience=false, spectralDataResilience=false;
 
-	private DecoderConfig() {
+	DecoderConfig() {
 		profile = Profile.AAC_MAIN;
 		sampleFrequency = SampleFrequency.SAMPLE_FREQUENCY_NONE;
 		channelConfiguration = ChannelConfiguration.CHANNEL_CONFIG_UNSUPPORTED;
 	}
-
-	private DecoderConfig(AudioDecoderInfo info) {
-		this.profile = info.getProfile();
-		this.sampleFrequency = info.getSampleFrequency();
-		this.channelConfiguration = info.getChannelConfiguration();
-	}
-
+	
 	/* ========== gets/sets ========== */
 	public ChannelConfiguration getChannelConfiguration() {
 		return channelConfiguration;
 	}
-
-	public void setChannelConfiguration(ChannelConfiguration channelConfiguration) {
-		this.channelConfiguration = channelConfiguration;
+	
+	public DecoderConfig setAudioDecoderInfo(AudioDecoderInfo info) {
+		profile = info.getProfile();
+		sampleFrequency = info.getSampleFrequency();
+		channelConfiguration = info.getChannelConfiguration();
+		return this;
 	}
 
 	public int getCoreCoderDelay() {
 		return coreCoderDelay;
 	}
 
-	public void setCoreCoderDelay(int coreCoderDelay) {
-		this.coreCoderDelay = coreCoderDelay;
-	}
-
 	public boolean isDependsOnCoreCoder() {
 		return dependsOnCoreCoder;
 	}
 
-	public void setDependsOnCoreCoder(boolean dependsOnCoreCoder) {
-		this.dependsOnCoreCoder = dependsOnCoreCoder;
-	}
-
 	public Profile getExtObjectType() {
 		return extProfile;
-	}
-
-	public void setExtObjectType(Profile extObjectType) {
-		this.extProfile = extObjectType;
 	}
 
 	public int getFrameLength() {
@@ -76,10 +61,6 @@ public class DecoderConfig {
 
 	public boolean isSmallFrameUsed() {
 		return frameLengthFlag;
-	}
-
-	public void setSmallFrameUsed(boolean shortFrame) {
-		this.frameLengthFlag = shortFrame;
 	}
 
 	public Profile getProfile() {
@@ -93,11 +74,7 @@ public class DecoderConfig {
 	public SampleFrequency getSampleFrequency() {
 		return sampleFrequency;
 	}
-
-	public void setSampleFrequency(SampleFrequency sampleFrequency) {
-		this.sampleFrequency = sampleFrequency;
-	}
-
+	
 	//=========== SBR =============
 	public boolean isSBRPresent() {
 		return sbrPresent;
@@ -131,7 +108,7 @@ public class DecoderConfig {
 	/* ======== static builder ========= */
 
 	public static DecoderConfig create(AudioDecoderInfo info) {
-		return new DecoderConfig(info);
+		return new DecoderConfig().setAudioDecoderInfo(info);
 	}
 
 	/**
@@ -140,30 +117,29 @@ public class DecoderConfig {
 	 * 
 	 * @return a DecoderConfig
 	 */
-	public static DecoderConfig decode(BitStream in) {
-		final DecoderConfig config = new DecoderConfig();
+	public DecoderConfig decode(BitStream in) {
 
-		config.profile = readProfile(in);
+		profile = readProfile(in);
 
 		int sf = in.readBits(4);
 		if(sf==0xF)
-			config.sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
+			sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
 		else
-			config.sampleFrequency = SampleFrequency.forInt(sf);
+			sampleFrequency = SampleFrequency.forInt(sf);
 
-		config.channelConfiguration = ChannelConfiguration.forInt(in.readBits(4));
+		channelConfiguration = ChannelConfiguration.forInt(in.readBits(4));
 
-		switch(config.profile) {
+		switch(profile) {
 			case AAC_SBR:
-				config.extProfile = config.profile;
-				config.sbrPresent = true;
+				extProfile = profile;
+				sbrPresent = true;
 				sf = in.readBits(4);
 				//TODO: 24 bits already read; read again?
-				//if(sf==0xF) config.sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
+				//if(sf==0xF) sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
 				//if sample frequencies are the same: downsample SBR
-				config.downSampledSBR = config.sampleFrequency.getIndex()==sf;
-				config.sampleFrequency = SampleFrequency.forInt(sf);
-				config.profile = readProfile(in);
+				downSampledSBR = sampleFrequency.getIndex()==sf;
+				sampleFrequency = SampleFrequency.forInt(sf);
+				profile = readProfile(in);
 				break;
 
 			case AAC_MAIN:
@@ -174,48 +150,47 @@ public class DecoderConfig {
 			case ER_AAC_LTP:
 			case ER_AAC_LD:
 				//ga-specific info:
-				config.frameLengthFlag = in.readBool();
-				if(config.frameLengthFlag)
+				frameLengthFlag = in.readBool();
+				if(frameLengthFlag)
 					throw new AACException("config uses 960-sample frames, not yet supported"); //TODO: are 960-frames working yet?
 
-				config.dependsOnCoreCoder = in.readBool();
+				dependsOnCoreCoder = in.readBool();
 
-				if(config.dependsOnCoreCoder)
-					config.coreCoderDelay = in.readBits(14);
+				if(dependsOnCoreCoder)
+					coreCoderDelay = in.readBits(14);
 				else
-					config.coreCoderDelay = 0;
+					coreCoderDelay = 0;
 
-				config.extensionFlag = in.readBool();
+				extensionFlag = in.readBool();
 
-				if(config.extensionFlag) {
-					if(config.profile.isErrorResilientProfile()) {
-						config.sectionDataResilience = in.readBool();
-						config.scalefactorResilience = in.readBool();
-						config.spectralDataResilience = in.readBool();
+				if(extensionFlag) {
+					if(profile.isErrorResilientProfile()) {
+						sectionDataResilience = in.readBool();
+						scalefactorResilience = in.readBool();
+						spectralDataResilience = in.readBool();
 					}
 					//extensionFlag3
 					in.skipBit();
 				}
 
-				if(config.channelConfiguration==ChannelConfiguration.CHANNEL_CONFIG_NONE) {
+				if(channelConfiguration==ChannelConfiguration.CHANNEL_CONFIG_NONE) {
 					//TODO: is this working correct? -> ISO 14496-3 part 1: 1.A.4.3
 					//in.skipBits(3); //PCE
 					PCE pce = new PCE();
 					pce.decode(in);
-					config.profile = pce.getProfile();
-					config.sampleFrequency = pce.getSampleFrequency();
-					config.channelConfiguration = ChannelConfiguration.forInt(pce.getChannelCount());
+					setAudioDecoderInfo(pce);
 				}
 
 				if(in.getBitsLeft()>10)
-					config.readSyncExtension(in);
+					readSyncExtension(in);
 
 				break;
 
 			default:
-				throw new AACException("profile not supported: "+config.profile.getIndex());
+				throw new AACException("profile not supported: "+profile.getIndex());
 		}
-		return config;
+
+		return this;
 	}
 
 	private static Profile readProfile(BitStream in) {

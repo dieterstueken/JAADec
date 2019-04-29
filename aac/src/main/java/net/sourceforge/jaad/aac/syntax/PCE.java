@@ -1,5 +1,7 @@
 package net.sourceforge.jaad.aac.syntax;
 
+import net.sourceforge.jaad.aac.AudioDecoderInfo;
+import net.sourceforge.jaad.aac.ChannelConfiguration;
 import net.sourceforge.jaad.aac.Profile;
 import net.sourceforge.jaad.aac.SampleFrequency;
 
@@ -14,7 +16,7 @@ import java.util.logging.Logger;
  * PCEs must come before all other syntactic elements in a raw_data_block.
  */
 
-public class PCE extends Element {
+public class PCE extends Element implements AudioDecoderInfo {
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.PCE"); //for debugging
 
 	private static final int MAX_FRONT_CHANNEL_ELEMENTS = 16;
@@ -169,5 +171,14 @@ public class PCE extends Element {
 			count += backElements[n].isCPE ? 2 : 1;
 
 		return count;
+	}
+
+	/**
+	 * Turn this PCE into a known ChannelConfiguration.
+	 * Todo: replace ChannelConfiguration by a preconfigured PCE.
+	 * @return a matching ChannelConfiguration according its channel count.
+	 */
+	public ChannelConfiguration getChannelConfiguration() {
+		return ChannelConfiguration.forInt(getChannelCount());
 	}
 }

@@ -185,9 +185,7 @@ public class SyntacticElements implements Constants {
 
 	private void decodePCE(BitStream in) {
 		pce.decode(in);
-		config.setProfile(pce.getProfile());
-		config.setSampleFrequency(pce.getSampleFrequency());
-		config.setChannelConfiguration(ChannelConfiguration.forInt(pce.getChannelCount()));
+		config.setAudioDecoderInfo(pce);
 	}
 
 	private void decodeFIL(BitStream in, ChannelElement prev) {
