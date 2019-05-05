@@ -2,8 +2,6 @@ package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.tools.MSMask;
 
 import java.util.Arrays;
@@ -45,11 +43,6 @@ public class CPE extends ChannelElement {
 	}
 
 	void decode(BitStream in, DecoderConfig conf) {
-		final Profile profile = conf.getProfile();
-		final SampleFrequency sf = conf.getSampleFrequency();
-		if(sf.equals(SampleFrequency.SAMPLE_FREQUENCY_NONE))
-			throw new AACException("invalid sample frequency");
-
 		readElementInstanceTag(in);
 
 		commonWindow = in.readBool();

@@ -130,4 +130,26 @@ Then FIL elements turn to be empty and need no saving/caching any more.
 
 DecoderConfig parsing as member function. Setup AudioDecoderInfo by PCE via interface.
 
+**2019-05-05**
+
+The SampleFrequency managed by DecoderConfig is not well defined.
+Using SBR the output frequency may be twice the imput frequency.
+This was previously managed by SyntacticElements in a rather comlicated way.
+Especially in case of implicit SBR the duplication of the output frequency
+took place after reading the first frame.
+
+Thus SBR detection or imlicit assumptions was moved to DecoderConfig which manages
+two frequencies now. For frequencies lower than 96000/2 SBR is generally expected.
+If SBR was expected but is missing later the output sample is upsampled by
+duplicating each pulse. Imlicit SBR may be enamled using the flag sbrEnabled.
+
+There are additional explicit extensions to signal SBR which have been incomlete.
+
+The SampleFrequency may be set directly by an index but also by an explicit frequency value.
+Thus the actual frequency may be different to the choosen nominal frequency given
+by the frequency table. The interface SampleRate thus has a nominal frequency
+and an actual frequency.
+
+For decoding the nominal frequency must be used while the output rate must use
+the actual frequency. In most cases actual and nominal frequencies are identical.  
 

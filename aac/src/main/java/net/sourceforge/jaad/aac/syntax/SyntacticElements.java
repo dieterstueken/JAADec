@@ -17,7 +17,6 @@ public class SyntacticElements implements Constants {
 
 	//global properties
 	private DecoderConfig config;
-	private boolean sbrPresent, psPresent;
 	private int bitsRead;
 	private int frame = 0;
 	//elements
@@ -47,8 +46,6 @@ public class SyntacticElements implements Constants {
 		curCCE = 0;
 		curDSE = 0;
 		curFIL = 0;
-		sbrPresent = false;
-		psPresent = false;
 		bitsRead = 0;
 	}
 
@@ -197,17 +194,11 @@ public class SyntacticElements implements Constants {
 
 		fils[curFIL].decode(in, prev);
 		curFIL++;
-
-		if(prev!=null&&prev.isSBRPresent()) {
-			sbrPresent = true;
-			if(!psPresent&&prev.getSBR().isPSUsed())
-				psPresent = true;
-		}
 	}
 
 	public void process(FilterBank filterBank) {
 		final Profile profile = config.getProfile();
-		final SampleFrequency sf = config.getSampleFrequency();
+		final SampleFrequency sf = config.getSampleFrequency().getNominal();
 		//final ChannelConfiguration channels = config.getChannelConfiguration();
 		channels.clear();
 
@@ -274,18 +265,20 @@ public class SyntacticElements implements Constants {
 
 		//SBR
 		int chs = 1;
-		if(sbrPresent&&config.isSBREnabled()) {
-			if(dataL.length==config.getFrameLength())
+		if(config.isSBRPresent()) {
+			if(dataL.length!=config.getSampleLength())
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
-			final SBR sbr = scelfe.getSBR();
-			if(sbr.isPSUsed()) {
+			SBR sbr = scelfe.getSBR();
+			if(sbr==null) {
+				SBR.upsample(dataL);
+			} else if(sbr.isPSUsed()) {
 				chs = 2;
 				float[] dataR = scelfe.getDataR();
-				scelfe.getSBR().processPS(dataL, dataR, false);
+				sbr.processPS(dataL, dataR, false);
 			}
 			else
-				scelfe.getSBR().process(dataL, false);
+				sbr.process(dataL, false);
 		}
 		return chs;
 	}
@@ -372,11 +365,17 @@ public class SyntacticElements implements Constants {
 			ics2.getGainControl().process(iqData2, info2.getWindowShape(ICSInfo.CURRENT), info2.getWindowShape(ICSInfo.PREVIOUS), info2.getWindowSequence());
 
 		//SBR
-		if(sbrPresent&&config.isSBREnabled()) {
-			if(data1.length==config.getFrameLength())
+		if(config.isSBRPresent()) {
+			if(data1.length==config.getSampleLength() || data2.length==config.getSampleLength())
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
-			cpe.getSBR().process(data1, data2, false);
+			SBR sbr = cpe.getSBR();
+
+			if(sbr==null) {
+				SBR.upsample(data1);
+				SBR.upsample(data2);
+			} else
+				sbr.process(data1, data2, false);
 		}
 	}
 
@@ -439,9 +438,8 @@ public class SyntacticElements implements Constants {
 		// mono can't be upgraded after implicit PS occures
 		final int chs = 2; //Math.max(data.length, 2);
 
-		final int mult = (sbrPresent&&config.isSBREnabled()) ? 2 : 1;
-		final int length = mult*config.getFrameLength();
-		final int freq = mult*config.getSampleFrequency().getFrequency();
+		final int length = config.getSampleLength();
+		final int freq = config.getOutputFrequency().getFrequency();
 
 		byte[] b = buffer.getData();
 		if(b.length!=chs*length*2)

@@ -1,6 +1,7 @@
 package net.sourceforge.jaad.aac.sbr;
 
 import java.util.Arrays;
+
 import net.sourceforge.jaad.aac.SampleFrequency;
 
 class FBT implements Constants {
@@ -8,7 +9,7 @@ class FBT implements Constants {
 	/* calculate the start QMF channel for the master frequency band table */
 	/* parameter is also called k0 */
 	public static int qmf_start_channel(int bs_start_freq, int bs_samplerate_mode,
-		SampleFrequency sample_rate) {
+										SampleFrequency sample_rate) {
 
 		int startMin = startMinTable[sample_rate.getIndex()];
 		int offsetIndex = offsetIndexTable[sample_rate.getIndex()];

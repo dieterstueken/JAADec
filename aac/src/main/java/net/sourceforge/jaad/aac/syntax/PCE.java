@@ -1,9 +1,6 @@
 package net.sourceforge.jaad.aac.syntax;
 
-import net.sourceforge.jaad.aac.AudioDecoderInfo;
-import net.sourceforge.jaad.aac.ChannelConfiguration;
-import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.*;
 
 import java.util.logging.Logger;
 
@@ -85,7 +82,7 @@ public class PCE extends Element implements AudioDecoderInfo {
 		lfeElementTags = new int[MAX_LFE_CHANNEL_ELEMENTS];
 		assocDataElementTags = new int[MAX_ASSOC_DATA_ELEMENTS];
 		ccElements = new CCE[MAX_VALID_CC_ELEMENTS];
-		sampleFrequency = SampleFrequency.SAMPLE_FREQUENCY_NONE;
+		sampleFrequency = SampleFrequency.SF_NONE;
 	}
 
 	public void decode(BitStream in) {
@@ -93,7 +90,7 @@ public class PCE extends Element implements AudioDecoderInfo {
 
 		profile = Profile.forInt(1+in.readBits(2));
 
-		sampleFrequency = SampleFrequency.forInt(in.readBits(4));
+		sampleFrequency = SampleFrequency.decode(in);
 
 		frontChannelElementsCount = in.readBits(4);
 		sideChannelElementsCount = in.readBits(4);

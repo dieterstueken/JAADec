@@ -1,9 +1,6 @@
 package net.sourceforge.jaad.aac.syntax;
 
-import net.sourceforge.jaad.aac.AACException;
-import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.*;
 import net.sourceforge.jaad.aac.tools.ICPrediction;
 import net.sourceforge.jaad.aac.tools.LTPrediction;
 
@@ -72,9 +69,7 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 
 	/* ========== decoding ========== */
 	public void decode(BitStream in, DecoderConfig conf, boolean commonWindow) {
-		final SampleFrequency sf = conf.getSampleFrequency();
-		if(sf.equals(SampleFrequency.SAMPLE_FREQUENCY_NONE))
-			throw new AACException("invalid sample frequency");
+		final SampleFrequency sf = conf.getSampleFrequency().getNominal();
 
 		in.skipBit(); //reserved
 		windowSequence = WindowSequence.forInt(in.readBits(2));

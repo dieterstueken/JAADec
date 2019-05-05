@@ -2,6 +2,7 @@ package net.sourceforge.jaad;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.Decoder;
+import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.SampleBuffer;
 import net.sourceforge.jaad.adts.ADTSDemultiplexer;
 import net.sourceforge.jaad.mp4.MP4Container;
@@ -82,15 +83,17 @@ public class Play {
 			throw new Exception("movie does not contain any AAC track");
 		final AudioTrack track = (AudioTrack) tracks.get(0);
 
+		//create AAC decoder
+		Decoder dec = Decoder.create(track.getDecoderSpecificInfo().getData());
+
 		//create audio format
-		final AudioFormat aufmt = new AudioFormat(track.getSampleRate(), track.getSampleSize(), track.getChannelCount(), true, true);
+		DecoderConfig conf = dec.getConfig();
+		AudioFormat aufmt = new AudioFormat(conf.getOutputFrequency().getFrequency(), 16, conf.getChannelCount(), true, true);
 
 		try(SourceDataLine line =  AudioSystem.getSourceDataLine(aufmt)) {
 			line.open();
 			line.start();
 
-			//create AAC decoder
-			final Decoder dec = Decoder.create(track.getDecoderSpecificInfo().getData());
 
 			//decode
 			final SampleBuffer buf = new SampleBuffer(aufmt);

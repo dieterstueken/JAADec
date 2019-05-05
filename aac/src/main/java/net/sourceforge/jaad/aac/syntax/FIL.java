@@ -1,8 +1,6 @@
 package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.AACException;
-import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.SampleFrequency;
 
 /**
  * fill_element: Abbreviation FIL.
@@ -40,21 +38,21 @@ class FIL extends Element {
 	void decode(BitStream in, ChannelElement prev) {
 
 		// for FIL elements the instance tag is a size instead.
-		final int count =  8 * readElementInstanceTag(in);
-
+		final int count = readElementInstanceTag(in);
 		final int pos = in.getPosition();
-		int left = count;
-		while(left>0) {
-			left = decodeExtensionPayload(in, left, prev);
-		}
+		final int end = pos + 8 * count;
 
-		final int pos2 = in.getPosition()-pos;
-		final int bitsLeft = count-pos2;
-		if(bitsLeft>0)
-			in.skipBits(pos2);
+		int left = end-in.getPosition();
 
-		else if(bitsLeft<0)
-			throw new AACException("FIL element overread: "+bitsLeft);
+		if(left>4)
+			decodeExtensionPayload(in, left, prev);
+
+		left = end-in.getPosition();
+
+		if(left<0)
+			throw new AACException("FIL element overread: "+left);
+		else if(left>0)
+			in.skipBits(left);
 	}
 
 	private int decodeExtensionPayload(BitStream in, int count, ChannelElement prev) {

@@ -1,6 +1,6 @@
 package net.sourceforge.jaad.aac.ps;
 
-import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 
 public class PS implements PSConstants, PSTables, HuffmanTables {
@@ -80,7 +80,7 @@ public class PS implements PSConstants, PSTables, HuffmanTables {
 	float[][][] ipd_prev = new float[20][2][2];
 	float[][][] opd_prev = new float[20][2][2];
 
-	public PS(SampleFrequency sr, int numTimeSlotsRate) {
+	public PS(SampleRate sr, int numTimeSlotsRate) {
 		int i;
 		int short_delay_band;
 

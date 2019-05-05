@@ -1,7 +1,7 @@
 package net.sourceforge.jaad.aac.tools;
 
 import net.sourceforge.jaad.aac.AACException;
-import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.ICSInfo;
@@ -61,7 +61,7 @@ public class TNS implements Constants, TNSTables {
 		}
 	}
 
-	public void process(ICStream ics, float[] spec, SampleFrequency sf, boolean decode) {
+	public void process(ICStream ics, float[] spec, SampleRate sf, boolean decode) {
 
 		LOGGER.warning("TNS unavailable");
 		//throw new AACException("TNS unupported");

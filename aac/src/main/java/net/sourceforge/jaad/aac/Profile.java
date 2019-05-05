@@ -24,12 +24,23 @@ public enum Profile {
 	ER_AAC_SCALABLE(20, "Error Resilient Scalable AAC", false),
 	ER_TWIN_VQ(21, "Error Resilient TwinVQ", false),
 	ER_BSAC(22, "Error Resilient BSAC", false),
-	ER_AAC_LD(23, "Error Resilient AAC Low Delay", false);
+	ER_AAC_LD(23, "Error Resilient AAC Low Delay", false),
+	AAC_PS(29, "Parametric Stereo", true);
 
 	private static final Profile[] ALL = {
 			AAC_MAIN, AAC_LC, AAC_SSR, AAC_LTP, AAC_SBR, AAC_SCALABLE, TWIN_VQ,
-			UNKNOWN, UNKNOWN, UNKNOWN, AAC_LD, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, ER_AAC_LC, ER_AAC_SSR,
-			ER_AAC_LTP, ER_AAC_SCALABLE, ER_TWIN_VQ, ER_BSAC, ER_AAC_LD
+			UNKNOWN, // CELP
+			UNKNOWN, // HXVC
+			UNKNOWN, // reserved
+			AAC_LD, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, ER_AAC_LC, ER_AAC_SSR,
+			ER_AAC_LTP, ER_AAC_SCALABLE, ER_TWIN_VQ, ER_BSAC, ER_AAC_LD,
+			UNKNOWN, // ER CELP
+			UNKNOWN, // ER HXVC
+			UNKNOWN, // ER HILN
+			UNKNOWN, // ER Parametric
+			UNKNOWN, // SSC (SinuSoidal Coding)
+			AAC_PS,
+			UNKNOWN // MPEG Surround
 	};
 
 	/**

@@ -4,33 +4,45 @@ import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.PCE;
 
+import static net.sourceforge.jaad.aac.SampleFrequency.SF_NONE;
+
 /**
- * DecoderConfig that must be passed to the
- * <code>Decoder</code> constructor. Typically it is created via one of the
- * static parsing methods.
+ * DecoderConfig that must be passed to the <code>Decoder</code> constructor.
+ *
+ * See 1.6.2.1 AudioSpecificConfig
  *
  * @author in-somnia
  */
 public class DecoderConfig {
 
-	private Profile profile, extProfile = Profile.UNKNOWN;
-	private SampleFrequency sampleFrequency;
-	private ChannelConfiguration channelConfiguration;
+	private Profile profile = Profile.AAC_MAIN, extProfile = Profile.UNKNOWN;
+	private SampleRate sampleFrequency = SF_NONE;
+	private ChannelConfiguration channelConfiguration = ChannelConfiguration.CHANNEL_CONFIG_UNSUPPORTED;
+	private ChannelConfiguration extChannelConfiguration = ChannelConfiguration.CHANNEL_CONFIG_UNSUPPORTED;
 	private boolean frameLengthFlag=false;
 	private boolean dependsOnCoreCoder=false;
 	private int coreCoderDelay = 0;
 	private boolean extensionFlag=false;
 	//extension: SBR
-	private boolean sbrPresent=false, downSampledSBR=false, sbrEnabled=true;
+	private final boolean sbrEnabled;
+	private boolean sbrPresent=false;
+	private boolean downSampledSBR=false;
+	// in case of SBR this may be twice the SampleFrequency.
+	private SampleRate outputFrequency;
+
+	private boolean psPresent = false;
+
 	//extension: error resilience
 	private boolean sectionDataResilience=false, scalefactorResilience=false, spectralDataResilience=false;
 
-	DecoderConfig() {
-		profile = Profile.AAC_MAIN;
-		sampleFrequency = SampleFrequency.SAMPLE_FREQUENCY_NONE;
-		channelConfiguration = ChannelConfiguration.CHANNEL_CONFIG_UNSUPPORTED;
+	DecoderConfig(boolean sbrEnabled) {
+		this.sbrEnabled = sbrEnabled;
 	}
-	
+
+	DecoderConfig() {
+		this(true);
+	}
+
 	/* ========== gets/sets ========== */
 	public ChannelConfiguration getChannelConfiguration() {
 		return channelConfiguration;
@@ -59,6 +71,11 @@ public class DecoderConfig {
 		return frameLengthFlag ? Constants.WINDOW_SMALL_LEN_LONG : Constants.WINDOW_LEN_LONG;
 	}
 
+	public int getSampleLength() {
+		int upsampled = sbrPresent && !downSampledSBR ? 2 : 1;
+		return upsampled * getFrameLength();
+	}
+
 	public boolean isSmallFrameUsed() {
 		return frameLengthFlag;
 	}
@@ -71,11 +88,41 @@ public class DecoderConfig {
 		this.profile = profile;
 	}
 
-	public SampleFrequency getSampleFrequency() {
+	public SampleRate getSampleFrequency() {
 		return sampleFrequency;
 	}
-	
+
+	public SampleRate getOutputFrequency() {
+		return outputFrequency;
+	}
+
+	public int getChannelCount() {
+
+		// expect HE AAC v2 with PS
+		if(sbrEnabled && channelConfiguration==ChannelConfiguration.CHANNEL_CONFIG_MONO)
+			return 2;
+
+		return channelConfiguration.getChannelCount();
+	}
+
 	//=========== SBR =============
+
+	/**
+	 * Called by implicit SBR detection.
+	 * Explicit SBR detection already setup output frequency
+	 */
+	public void setSBRPresent() {
+		if(sbrEnabled && !sbrPresent) {
+			sbrPresent = true;
+
+			SampleRate duplicated = sampleFrequency.duplicated();
+			if(duplicated != SF_NONE)
+				outputFrequency = duplicated;
+			else // can not be duplicated, use downsampled SBR instead
+				downSampledSBR = true;
+		}
+	}
+
 	public boolean isSBRPresent() {
 		return sbrPresent;
 	}
@@ -88,8 +135,8 @@ public class DecoderConfig {
 		return sbrEnabled;
 	}
 
-	public void setSBREnabled(boolean enabled) {
-		sbrEnabled = enabled;
+	public void setPsPresent() {
+		psPresent = true;
 	}
 
 	//=========== ER =============
@@ -114,32 +161,34 @@ public class DecoderConfig {
 	/**
 	 * Parses the input arrays as a DecoderSpecificInfo, as used in MP4
 	 * containers.
-	 * 
+	 *
+	 * see: 1.6.2.1 AudioSpecificConfig
 	 * @return a DecoderConfig
 	 */
 	public DecoderConfig decode(BitStream in) {
 
 		profile = readProfile(in);
 
-		int sf = in.readBits(4);
-		if(sf==0xF)
-			sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
-		else
-			sampleFrequency = SampleFrequency.forInt(sf);
+		sampleFrequency = SampleRate.decode(in);
+		outputFrequency = sampleFrequency;
 
 		channelConfiguration = ChannelConfiguration.forInt(in.readBits(4));
 
 		switch(profile) {
+			case AAC_PS:
+				psPresent = true;
+
 			case AAC_SBR:
+				SampleRate frequency = SampleRate.decode(in);
+
 				extProfile = profile;
-				sbrPresent = true;
-				sf = in.readBits(4);
-				//TODO: 24 bits already read; read again?
-				//if(sf==0xF) sampleFrequency = SampleFrequency.forFrequency(in.readBits(24));
-				//if sample frequencies are the same: downsample SBR
-				downSampledSBR = sampleFrequency.getIndex()==sf;
-				sampleFrequency = SampleFrequency.forInt(sf);
 				profile = readProfile(in);
+
+				if(sbrEnabled) {
+					sbrPresent = true;
+					outputFrequency = frequency;
+				}
+
 				break;
 
 			case AAC_MAIN:
@@ -181,13 +230,19 @@ public class DecoderConfig {
 					setAudioDecoderInfo(pce);
 				}
 
-				if(in.getBitsLeft()>10)
+				if(sbrEnabled && in.getBitsLeft()>10)
 					readSyncExtension(in);
 
 				break;
 
 			default:
 				throw new AACException("profile not supported: "+profile.getIndex());
+		}
+
+		// expect implicit SBR for low frequencies
+		// see 4.6.18.2.6
+		if(sbrEnabled && !sbrPresent && sampleFrequency.duplicated()!=SF_NONE) {
+			setSBRPresent();
 		}
 
 		return this;
@@ -200,29 +255,33 @@ public class DecoderConfig {
 		return Profile.forInt(i);
 	}
 
+	/**
+	 * Read possible SBR and PS indication.
+	 * See 1.6.6 Signaling of Parametric Stereo (PS)
+	 * @param in input stream
+	 */
 	private void readSyncExtension(BitStream in) {
-		final int type = in.readBits(11);
-		switch(type) {
-			case 0x2B7:
-				final Profile profile = Profile.forInt(in.readBits(5));
-
-				if(profile.equals(Profile.AAC_SBR)) {
-					sbrPresent = in.readBool();
-					if(sbrPresent) {
-						this.profile = profile;
-
-						int tmp = in.readBits(4);
-
-						if(tmp==sampleFrequency.getIndex())
-							downSampledSBR = true;
-
-						if(tmp==15) {
-							throw new AACException("sample rate specified explicitly, not supported yet!");
-							//tmp = in.readBits(24);
-						}
-					}
+		int extensionType = in.readBits(11);
+		if(extensionType==0x2B7) {
+			extProfile = Profile.forInt(in.readBits(5));
+			if (extProfile.equals(Profile.AAC_SBR) || extProfile.equals(Profile.ER_BSAC)) {
+				sbrPresent = in.readBool();
+				if (sbrPresent) {
+					outputFrequency = SampleRate.decode(in);
 				}
-				break;
+				if(extProfile.equals(Profile.AAC_SBR)) {
+					// possible PS indication
+					// see: 1.6.6 Signaling of Parametric Stereo (PS)
+					if(in.getBitsLeft()>12) {
+						extensionType = in.readBits(11);
+						if(extensionType== 0x548)
+							psPresent = in.readBool();
+					}
+				} else
+				if(extProfile.equals(Profile.ER_BSAC)) {
+					extChannelConfiguration = ChannelConfiguration.forInt(in.readBits(4));
+				}
+			}
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.sbr.SBR;
 
 /**
@@ -31,7 +30,6 @@ abstract public class ChannelElement extends Element {
 	 */
 	abstract public boolean isStereo();
 
-
 	protected SBR sbr;
 
     int decodeSBR(BitStream in, int count, boolean crc) {
@@ -42,15 +40,15 @@ abstract public class ChannelElement extends Element {
 		}
 
    		if(sbr==null) {
-               /* implicit SBR signalling, see 4.6.18.2.6 */
-			SampleFrequency sf = config.getSampleFrequency();
-   			int fq = sf.getFrequency();
-   			if(fq<24000 && !config.isSBRDownSampled())
-   			    sf = SampleFrequency.forFrequency(2*fq);
-   			sbr = new SBR(config.isSmallFrameUsed(), isChannelPair(), sf, config.isSBRDownSampled());
+			config.setSBRPresent();
+   			sbr = new SBR(config.isSmallFrameUsed(), isChannelPair(), config.getOutputFrequency(), config.isSBRDownSampled());
    		}
 
-   		return sbr.decode(in, count, crc);
+   		int result = sbr.decode(in, count, crc);
+   		if(sbr.isPSUsed())
+   			config.setPsPresent();
+
+   		return result;
    	}
 
    	boolean isSBRPresent() {
@@ -64,9 +62,7 @@ abstract public class ChannelElement extends Element {
     private float[] dataL, dataR;
 
     private float[] newData() {
-    	int len = config.getFrameLength();
-    	if(isSBRPresent())
-    		len *= 2;
+    	int len = config.getSampleLength();
     	return new float[len];
 	}
 

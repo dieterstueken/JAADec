@@ -84,21 +84,6 @@ class ADTSFrame implements AudioDecoderInfo {
 		return frameLength-(protectionAbsent ? 7 : 9);
 	}
 
-	byte[] createDecoderSpecificInfo() {
-		if(info==null) {
-			//5 bits profile, 4 bits sample frequency, 4 bits channel configuration
-			info = new byte[2];
-			info[0] = (byte) (profile<<3);
-			info[0] |= (sampleFrequency>>1)&0x7;
-			info[1] = (byte) ((sampleFrequency&0x1)<<7);
-			info[1] |= (channelConfiguration<<3);
-			/*1 bit frame length flag, 1 bit depends on core coder,
-			1 bit extension flag (all three currently 0)*/
-		}
-
-		return info;
-	}
-
 	public Profile getProfile() {
 		return Profile.forInt(profile);
 	}

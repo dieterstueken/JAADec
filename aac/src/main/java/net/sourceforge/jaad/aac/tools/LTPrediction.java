@@ -2,7 +2,7 @@ package net.sourceforge.jaad.aac.tools;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.Constants;
@@ -91,7 +91,7 @@ public class LTPrediction implements Constants {
 		}
 	}
 
-	public void process(ICStream ics, float[] data, FilterBank filterBank, SampleFrequency sf) {
+	public void process(ICStream ics, float[] data, FilterBank filterBank, SampleRate sf) {
 
 		if(!isPresent)
 			return;

@@ -2,6 +2,7 @@ package net.sourceforge.jaad.aac.sbr;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.ps.PS;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 
@@ -156,10 +157,10 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 	int[][] bs_df_env = new int[2][9];
 	int[][] bs_df_noise = new int[2][3];
 
-	public SBR(boolean smallFrames, boolean stereo, SampleFrequency sample_rate, boolean downSampledSBR) {
+	public SBR(boolean smallFrames, boolean stereo, SampleRate sample_rate, boolean downSampledSBR) {
 		this.downSampledSBR = downSampledSBR;
 		this.stereo = stereo;
-		this.sample_rate = sample_rate;
+		this.sample_rate = sample_rate.getNominal();
 
 		this.bs_freq_scale = 2;
 		this.bs_alter_scale = true;
@@ -1342,5 +1343,14 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 
 	public boolean isPSUsed() {
 		return ps_used;
+	}
+
+	public static void upsample(float[] data) {
+
+		for(int i=data.length/2-1; i>0; --i) {
+			float v = data[i];
+			data[2*i] = v;
+			data[2*i+1] = v;
+		}
 	}
 }

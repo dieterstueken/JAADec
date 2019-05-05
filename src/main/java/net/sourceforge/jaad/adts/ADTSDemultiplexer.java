@@ -23,10 +23,6 @@ public class ADTSDemultiplexer {
 			throw new IOException("no ADTS header found");
 	}
 
-	public byte[] getDecoderSpecificInfo() {
-		return frame.createDecoderSpecificInfo();
-	}
-
 	public byte[] readNextFrame() throws IOException {
 		if(first)
 			first = false;
