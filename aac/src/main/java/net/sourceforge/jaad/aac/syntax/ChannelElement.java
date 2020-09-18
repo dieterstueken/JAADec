@@ -9,15 +9,32 @@ import net.sourceforge.jaad.aac.sbr.SBR;
  * Date: 16.04.19
  * Time: 16:55
  */
-abstract public class ChannelElement extends Element {
+abstract public class ChannelElement implements Element {
+
+	abstract static class ChannelTag extends InstanceTag {
+
+		protected ChannelTag(int id) {
+			super(id);
+		}
+
+		abstract public boolean isChannelPair();
+
+		@Override
+		abstract public ChannelElement newElement(DecoderConfig config);
+	}
 
 	protected final DecoderConfig config;
 
-	protected ChannelElement(DecoderConfig config) {
+	protected final ChannelTag tag;
+
+	protected ChannelElement(DecoderConfig config, ChannelTag tag) {
 		this.config = config;
+		this.tag = tag;
 	}
 
-	abstract void decode(BitStream in, DecoderConfig conf);
+	public ChannelTag getElementInstanceTag() {
+		return tag;
+	}
 
 	/**
 	 * @return if this element represents a channel pair.

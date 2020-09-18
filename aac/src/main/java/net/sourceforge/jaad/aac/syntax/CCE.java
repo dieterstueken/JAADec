@@ -4,6 +4,8 @@ import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.huffman.HCB;
 import net.sourceforge.jaad.aac.huffman.Huffman;
 
+import java.util.List;
+
 /**
  * coupling_channel_element: Abbreviation CCE.
  *
@@ -15,7 +17,46 @@ import net.sourceforge.jaad.aac.huffman.Huffman;
  * are as for single_channel_element().
  */
 
-class CCE extends Element implements Constants {
+class CCE implements Element, Constants {
+
+	public static final Type TYPE = Type.CCE;
+
+	static class Tag extends InstanceTag {
+
+		protected Tag(int id) {
+			super(id);
+		}
+
+		@Override
+		public int getId() {
+			return super.getId()%16;
+		}
+
+		public boolean isIsIndSW() {
+			return id>=16;
+		}
+
+		@Override
+		public Type getType() {
+			return TYPE;
+		}
+
+		@Override
+		public Element newElement(DecoderConfig config) {
+			return new CCE(config, this);
+		}
+	}
+
+	public static final List<Tag> TAGS = Element.createTagList(32, CCE.Tag::new);
+
+
+	private final DecoderConfig config;
+	private final Tag tag;
+
+	@Override
+	public Tag getElementInstanceTag() {
+		return tag;
+	}
 
 	public static final int BEFORE_TNS = 0;
 	public static final int AFTER_TNS = 1;
@@ -36,8 +77,11 @@ class CCE extends Element implements Constants {
 	 */
 	private final float[][] gain;
 
-	CCE(DecoderConfig config) {
+	CCE(DecoderConfig config, Tag tag) {
 		super();
+		this.config = config;
+		this.tag = tag;
+
 		ics = new ICStream(config);
 		channelPair = new boolean[8];
 		idSelect = new int[8];
@@ -65,8 +109,7 @@ class CCE extends Element implements Constants {
 		return chSelect[index];
 	}
 
-	void decode(BitStream in, DecoderConfig conf) {
-		readElementInstanceTag(in);
+	public void decode(BitStream in) {
 		couplingPoint = 2*in.readBit();
 		coupledCount = in.readBits(3);
 		int gainCount = 0;
@@ -88,7 +131,7 @@ class CCE extends Element implements Constants {
 		final boolean sign = in.readBool();
 		final double scale = CCE_SCALE[in.readBits(2)];
 
-		ics.decode(in, false, conf);
+		ics.decode(in, false, config);
 		final ICSInfo info = ics.getInfo();
 		final int windowGroupCount = info.getWindowGroupCount();
 		final int maxSFB = info.getMaxSFB();

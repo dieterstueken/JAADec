@@ -2,6 +2,8 @@ package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.DecoderConfig;
 
+import java.util.List;
+
 /**
  * data_stream_element Abbreviation DSE.
  *
@@ -13,16 +15,43 @@ import net.sourceforge.jaad.aac.DecoderConfig;
  * data_stream_element’s with the same instance tag.
  */
 
-class DSE extends Element {
+class DSE implements Element {
 
-	private byte[] dataStreamBytes;
+	public static final Type TYPE = Type.DSE;
 
-	DSE(DecoderConfig config) {
-		super();
+	static class Tag extends InstanceTag {
+
+		protected Tag(int id) {
+			super(id);
+		}
+
+		@Override
+		public Type getType() {
+			return TYPE;
+		}
+
+		@Override
+		public Element newElement(DecoderConfig config) {
+			return new DSE(config, this);
+		}
 	}
 
-	void decode(BitStream in) {
-		readElementInstanceTag(in);
+	public static final List<Tag> TAGS = Element.createTagList(32, Tag::new);
+
+	private final Tag tag;
+
+	@Override
+	public Tag getElementInstanceTag() {
+		return tag;
+	}
+	private byte[] dataStreamBytes;
+
+	public DSE(DecoderConfig config, Tag tag) {
+		super();
+		this.tag = tag;
+	}
+
+	public void decode(BitStream in) {
 
 		final boolean byteAlign = in.readBool();
 		int count = in.readBits(8);

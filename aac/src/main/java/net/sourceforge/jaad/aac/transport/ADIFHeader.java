@@ -50,8 +50,7 @@ public final class ADIFHeader {
 				adifBufferFullness[i] = -1;
 			else
 				adifBufferFullness[i] = in.readBits(20);
-			pces[i] = new PCE();
-			pces[i].decode(in);
+			pces[i] = PCE.read(in);
 		}
 	}
 

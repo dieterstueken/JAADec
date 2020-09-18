@@ -8,7 +8,9 @@ import net.sourceforge.jaad.aac.tools.LTPrediction;
 import net.sourceforge.jaad.aac.tools.MS;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,33 +22,38 @@ public class SyntacticElements implements Constants {
 	private int bitsRead;
 	private int frame = 0;
 	//elements
-	private final PCE pce;
-	private final ChannelElement[] elements; //SCE, LFE and CPE
-	private final CCE[] cces;
-	private final DSE[] dses;
-	private final FIL[] fils;
-	private int curElem, curCCE, curDSE, curFIL;
+
+	private FIL fil;
+	private ChannelElement prev;
+
+	private List<CCE> cces = new ArrayList<>();
+
+	private final Map<Element.InstanceTag, Element> elements = new HashMap<>();
+
+	private final List<ChannelElement> audioElements = new ArrayList<>(); //SCE, LFE and CPE
 
 	private List<float[]> channels = new ArrayList<>();
 
+	private Element newElement(Element.InstanceTag tag) {
+		return tag.newElement(config);
+	}
+
+	private Element getElement(Element.InstanceTag tag) {
+		return elements.computeIfAbsent(tag, this::newElement);
+	}
+
 	public SyntacticElements(DecoderConfig config) {
 		this.config = config;
-
-		pce = new PCE();
-		elements = new ChannelElement[4*MAX_ELEMENTS];
-		cces = new CCE[MAX_ELEMENTS];
-		dses = new DSE[MAX_ELEMENTS];
-		fils = new FIL[MAX_ELEMENTS];
 
 		startNewFrame();
 	}
 
 	public final void startNewFrame() {
-		curElem = 0;
-		curCCE = 0;
-		curDSE = 0;
-		curFIL = 0;
 		bitsRead = 0;
+		audioElements.clear();
+		cces.clear();
+		channels.clear();
+		prev = null;
 	}
 
 	public void decode(BitStream in) {
@@ -54,81 +61,69 @@ public class SyntacticElements implements Constants {
 		final int start = in.getPosition(); //should be 0
 
 		int type;
-		ChannelElement prev = null;
-		boolean content = true;
 		if(!config.getProfile().isErrorResilientProfile()) {
-			while(content&&(type = in.readBits(3))!=ELEMENT_END) {
+			while((type = in.readBits(3))!=ELEMENT_END) {
 				switch(type) {
 					case ELEMENT_SCE:
-					case ELEMENT_LFE:
-						LOGGER.finest("SCE");
-						prev = decodeSCE_LFE(in);
+						decode(SCE.TAGS, in);
 						break;
 					case ELEMENT_CPE:
-						LOGGER.finest("CPE");
-						prev = decodeCPE(in);
+						decode(CPE.TAGS, in);
 						break;
 					case ELEMENT_CCE:
-						LOGGER.finest("CCE");
-						decodeCCE(in);
-						prev = null;
+						decode(CCE.TAGS, in);
+						break;
+					case ELEMENT_LFE:
+						decode(LFE.TAGS, in);
 						break;
 					case ELEMENT_DSE:
-						LOGGER.finest("DSE");
-						decodeDSE(in);
-						prev = null;
+						decode(DSE.TAGS, in);
 						break;
 					case ELEMENT_PCE:
-						LOGGER.finest("PCE");
-						decodePCE(in);
-						prev = null;
+						decode(PCE.TAGS, in);
 						break;
 					case ELEMENT_FIL:
-						LOGGER.finest("FIL");
-						decodeFIL(in, prev);
-						prev = null;
+						decodeFIL(in);
 						break;
 				}
 			}
-			LOGGER.finest("END");
-			content = false;
 			prev = null;
 		}
 		else {
 			//error resilient raw data block
 			switch(config.getChannelConfiguration()) {
 				case CHANNEL_CONFIG_MONO:
-					decodeSCE_LFE(in);
+					decode(SCE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_STEREO:
-					decodeCPE(in);
+					decode(CPE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_STEREO_PLUS_CENTER:
-					decodeSCE_LFE(in);
-					decodeCPE(in);
+					decode(SCE.TAGS, in);
+					decode(CPE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_STEREO_PLUS_CENTER_PLUS_REAR_MONO:
-					decodeSCE_LFE(in);
-					decodeCPE(in);
-					decodeSCE_LFE(in);
+					decode(SCE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(LFE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_FIVE:
-					decodeSCE_LFE(in);
-					decodeCPE(in);
-					decodeCPE(in);
+					decode(SCE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(CPE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_FIVE_PLUS_ONE:
-					decodeSCE_LFE(in);
-					decodeCPE(in);
-					decodeCPE(in);
-					decodeSCE_LFE(in);
+					decode(SCE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(LFE.TAGS, in);
 					break;
 				case CHANNEL_CONFIG_SEVEN_PLUS_ONE:
-					decodeSCE_LFE(in);
-					decodeCPE(in);
-					decodeCPE(in);
-					decodeCPE(in);
-					decodeSCE_LFE(in);
+					decode(SCE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(CPE.TAGS, in);
+					decode(LFE.TAGS, in);
 					break;
 				default:
 					throw new AACException("unsupported channel configuration for error resilience: "+config.getChannelConfiguration());
@@ -137,63 +132,45 @@ public class SyntacticElements implements Constants {
 		in.byteAlign();
 
 		bitsRead = in.getPosition()-start;
+
+		LOGGER.finest("END");
 	}
 
-	private ChannelElement decodeSCE_LFE(BitStream in) {
-		if(elements[curElem]==null)
-			elements[curElem] = new SCE_LFE(config);
+	private Element decode(List<? extends Element.InstanceTag> tags, BitStream in) {
 
-		elements[curElem].decode(in, config);
-		curElem++;
-		return elements[curElem-1];
+		int id = in.readBits(4);
+		Element.InstanceTag tag = tags.get(id);
+
+		LOGGER.finest(tag.toString());
+
+		Element element = getElement(tag);
+
+		element.decode(in);
+
+		if(element instanceof ChannelElement) {
+			prev = (ChannelElement) element;
+			audioElements.add(prev);
+		}
+
+		if(element instanceof CCE) {
+			cces.add((CCE)element);
+		}
+
+		if(element instanceof PCE) {
+			PCE pce = (PCE) element;
+			config.setAudioDecoderInfo(pce);
+		}
+
+		return element;
 	}
 
-	private ChannelElement decodeCPE(BitStream in) {
 
-		if(elements[curElem]==null)
-			elements[curElem] = new CPE(config);
+	private void decodeFIL(BitStream in) {
 
-		elements[curElem].decode(in, config);
-		curElem++;
-		return elements[curElem-1];
-	}
+		if(fil==null)
+			fil = new FIL();
 
-	private void decodeCCE(BitStream in) {
-		if(curCCE==MAX_ELEMENTS)
-			throw new AACException("too much CCE elements");
-
-		if(cces[curCCE]==null)
-			cces[curCCE] = new CCE(config);
-
-		cces[curCCE].decode(in, config);
-		curCCE++;
-	}
-
-	private void decodeDSE(BitStream in) {
-		if(curDSE==MAX_ELEMENTS)
-			throw new AACException("too much CCE elements");
-
-		if(dses[curDSE]==null)
-			dses[curDSE] = new DSE(config);
-
-		dses[curDSE].decode(in);
-		curDSE++;
-	}
-
-	private void decodePCE(BitStream in) {
-		pce.decode(in);
-		config.setAudioDecoderInfo(pce);
-	}
-
-	private void decodeFIL(BitStream in, ChannelElement prev) {
-		if(curFIL==MAX_ELEMENTS)
-			throw new AACException("too much FIL elements");
-
-		if(fils[curFIL]==null)
-			fils[curFIL] = new FIL();
-
-		fils[curFIL].decode(in, prev);
-		curFIL++;
+		fil.decode(in, prev);
 	}
 
 	public void process(FilterBank filterBank) {
@@ -202,17 +179,13 @@ public class SyntacticElements implements Constants {
 		//final ChannelConfiguration channels = config.getChannelConfiguration();
 		channels.clear();
 
-		//int chs = config.getChannelConfiguration().getChannelCount();
-
-		for(int i = 0; i<elements.length; i++) {
-			ChannelElement e = elements[i];
-			if(e==null)
+		for (ChannelElement e : audioElements) {
+			if (e == null)
 				continue;
 
-			if(e instanceof SCE_LFE) {
-				processSingle((SCE_LFE) e, filterBank, profile, sf);
-			}
-			else if(e instanceof CPE) {
+			if (e instanceof SCE) {
+				processSingle((SCE) e, filterBank, profile, sf);
+			} else if (e instanceof CPE) {
 				processPair((CPE) e, filterBank, profile, sf);
 			}
 
@@ -222,11 +195,11 @@ public class SyntacticElements implements Constants {
 		}
 	}
 
-	private int processSingle(SCE_LFE scelfe, FilterBank filterBank, Profile profile, SampleFrequency sf) {
+	private int processSingle(SCE scelfe, FilterBank filterBank, Profile profile, SampleFrequency sf) {
 		final ICStream ics = scelfe.getICStream();
 		final ICSInfo info = ics.getInfo();
 		final LTPrediction ltp = info.getLTPrediction();
-		final int elementID = scelfe.getElementInstanceTag();
+		final int elementID = scelfe.getElementInstanceTag().getId();
 
 		//inverse quantization
 		final float[] iqData = ics.getInvQuantData();
@@ -265,20 +238,18 @@ public class SyntacticElements implements Constants {
 
 		//SBR
 		int chs = 1;
-		if(config.isSBRPresent()) {
+		if(scelfe.isSBRPresent()&&config.isSBREnabled()) {
 			if(dataL.length!=config.getSampleLength())
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
-			SBR sbr = scelfe.getSBR();
-			if(sbr==null) {
-				SBR.upsample(dataL);
-			} else if(sbr.isPSUsed()) {
+			final SBR sbr = scelfe.getSBR();
+			if(sbr.isPSUsed()) {
 				chs = 2;
 				float[] dataR = scelfe.getDataR();
-				sbr.processPS(dataL, dataR, false);
+				scelfe.getSBR().processPS(dataL, dataR, false);
 			}
 			else
-				sbr.process(dataL, false);
+				scelfe.getSBR().process(dataL, false);
 		}
 		return chs;
 	}
@@ -296,7 +267,7 @@ public class SyntacticElements implements Constants {
 		final float[] data1 = cpe.getDataL();
 		final float[] data2 = cpe.getDataR();
 
-		final int elementID = cpe.getElementInstanceTag();
+		final int elementID = cpe.getElementInstanceTag().getId();
 
 		//inverse quantization
 		final float[] iqData1 = ics1.getInvQuantData();
@@ -365,50 +336,39 @@ public class SyntacticElements implements Constants {
 			ics2.getGainControl().process(iqData2, info2.getWindowShape(ICSInfo.CURRENT), info2.getWindowShape(ICSInfo.PREVIOUS), info2.getWindowSequence());
 
 		//SBR
-		if(config.isSBRPresent()) {
-			if(data1.length==config.getSampleLength() || data2.length==config.getSampleLength())
+		if(cpe.isSBRPresent()&&config.isSBREnabled()) {
+			if(data1.length==config.getFrameLength())
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
-			SBR sbr = cpe.getSBR();
-
-			if(sbr==null) {
-				SBR.upsample(data1);
-				SBR.upsample(data2);
-			} else
-				sbr.process(data1, data2, false);
+			cpe.getSBR().process(data1, data2, false);
 		}
 	}
 
 	void processIndependentCoupling(boolean channelPair, int elementID, float[] data1, float[] data2) {
-		int index, c, chSelect;
-		CCE cce;
-		for(int i = 0; i<cces.length; i++) {
-			cce = cces[i];
-			index = 0;
-			if(cce!=null&&cce.getCouplingPoint()==CCE.AFTER_IMDCT) {
-				for(c = 0; c<=cce.getCoupledCount(); c++) {
-					chSelect = cce.getCHSelect(c);
-					if(cce.isChannelPair(c)==channelPair&&cce.getIDSelect(c)==elementID) {
-						if(chSelect!=1) {
+		for (CCE cce : cces) {
+			int index = 0;
+			if (cce != null && cce.getCouplingPoint() == CCE.AFTER_IMDCT) {
+				for (int c = 0; c <= cce.getCoupledCount(); c++) {
+					int chSelect = cce.getCHSelect(c);
+					if (cce.isChannelPair(c) == channelPair && cce.getIDSelect(c) == elementID) {
+						if (chSelect != 1) {
 							cce.applyIndependentCoupling(index, data1);
-							if(chSelect!=0)
+							if (chSelect != 0)
 								index++;
 						}
-						if(chSelect!=2) {
+						if (chSelect != 2) {
 							cce.applyIndependentCoupling(index, data2);
 							index++;
 						}
-					}
-					else
-						index += 1+((chSelect==3) ? 1 : 0);
+					} else
+						index += 1 + ((chSelect == 3) ? 1 : 0);
 				}
 			}
 		}
 	}
 
 	void processDependentCoupling(boolean channelPair, int elementID, int couplingPoint, float[] data1, float[] data2) {
-		for(int i = 0; i<cces.length; i++) {
-			CCE cce = cces[i];
+		for (CCE cce : cces) {
 			int index = 0;
 			if(cce!=null&&cce.getCouplingPoint()==couplingPoint) {
 				for(int c = 0; c<=cce.getCoupledCount(); c++) {
@@ -432,37 +392,37 @@ public class SyntacticElements implements Constants {
 	}
 
 	public void sendToOutput(SampleBuffer buffer) {
-		final boolean be = buffer.isBigEndian();
+			final boolean be = buffer.isBigEndian();
 
-		// always allocate at least two channels
-		// mono can't be upgraded after implicit PS occures
-		final int chs = 2; //Math.max(data.length, 2);
+			// always allocate at least two channels
+			// mono can't be upgraded after implicit PS occurs
+			final int chs = 2; //Math.max(data.length, 2);
 
 		final int length = config.getSampleLength();
 		final int freq = config.getOutputFrequency().getFrequency();
 
-		byte[] b = buffer.getData();
-		if(b.length!=chs*length*2)
-			b = new byte[chs*length*2];
+			byte[] b = buffer.getData();
+			if(b.length!=chs*length*2)
+				b = new byte[chs*length*2];
 
-		for(int ch = 0; ch<chs; ch++) {
-			// duplicate possible mono channel
-			int chi = Math.min(ch, channels.size()-1);
-			float[] cur = channels.get(chi);
-			for(int l = 0; l<length; l++) {
-				short s = (short) Math.max(Math.min(Math.round(cur[l]), Short.MAX_VALUE), Short.MIN_VALUE);
-				int off = (l*chs+ch)*2;
-				if(be) {
-					b[off] = (byte) ((s>>8)&BYTE_MASK);
-					b[off+1] = (byte) (s&BYTE_MASK);
-				}
-				else {
-					b[off+1] = (byte) ((s>>8)&BYTE_MASK);
-					b[off] = (byte) (s&BYTE_MASK);
+			for(int ch = 0; ch<chs; ch++) {
+				// duplicate possible mono channel
+				int chi = Math.min(ch, channels.size()-1);
+				float[] cur = channels.get(chi);
+				for(int l = 0; l<length; l++) {
+					short s = (short) Math.max(Math.min(Math.round(cur[l]), Short.MAX_VALUE), Short.MIN_VALUE);
+					int off = (l*chs+ch)*2;
+					if(be) {
+						b[off] = (byte) ((s>>8)&BYTE_MASK);
+						b[off+1] = (byte) (s&BYTE_MASK);
+					}
+					else {
+						b[off+1] = (byte) ((s>>8)&BYTE_MASK);
+						b[off] = (byte) (s&BYTE_MASK);
+					}
 				}
 			}
-		}
 
-		buffer.setData(b, freq, chs, 16, bitsRead);
-	}
+			buffer.setData(b, freq, chs, 16, bitsRead);
+		}
 }

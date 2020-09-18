@@ -225,8 +225,7 @@ public class DecoderConfig {
 				if(channelConfiguration==ChannelConfiguration.CHANNEL_CONFIG_NONE) {
 					//TODO: is this working correct? -> ISO 14496-3 part 1: 1.A.4.3
 					//in.skipBits(3); //PCE
-					PCE pce = new PCE();
-					pce.decode(in);
+					PCE pce = PCE.read(in);
 					setAudioDecoderInfo(pce);
 				}
 

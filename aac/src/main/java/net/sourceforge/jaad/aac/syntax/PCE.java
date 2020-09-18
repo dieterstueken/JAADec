@@ -2,6 +2,7 @@ package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.*;
 
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -13,8 +14,49 @@ import java.util.logging.Logger;
  * PCEs must come before all other syntactic elements in a raw_data_block.
  */
 
-public class PCE extends Element implements AudioDecoderInfo {
+public class PCE implements Element, AudioDecoderInfo {
+
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.PCE"); //for debugging
+
+	public static final Type TYPE = Type.PCE;
+
+	static class Tag extends InstanceTag {
+
+		protected Tag(int id) {
+			super(id);
+		}
+
+		@Override
+		public Type getType() {
+			return TYPE;
+		}
+
+		@Override
+		public Element newElement(DecoderConfig config) {
+			return new PCE(this);
+		}
+	}
+
+	public static final List<Tag> TAGS = Element.createTagList(32, Tag::new);
+
+	/**
+	 * Read a full PCE element with tag and content.
+	 * @param in input stream to decode.
+	 * @return a new program config element.
+	 */
+	public static PCE read(BitStream in) {
+		Tag tag = TAGS.get(in.readBits(4));
+		PCE pce = new PCE(tag);
+		pce.decode(in);
+		return pce;
+	}
+
+	private final Tag tag;
+
+	@Override
+	public Tag getElementInstanceTag() {
+		return tag;
+	}
 
 	private static final int MAX_FRONT_CHANNEL_ELEMENTS = 16;
 	private static final int MAX_SIDE_CHANNEL_ELEMENTS = 16;
@@ -60,6 +102,7 @@ public class PCE extends Element implements AudioDecoderInfo {
 			return tag;
 		}
 	}
+
 	private Profile profile;
 	private SampleFrequency sampleFrequency;
 	private int frontChannelElementsCount, sideChannelElementsCount, backChannelElementsCount;
@@ -74,8 +117,10 @@ public class PCE extends Element implements AudioDecoderInfo {
 	private final CCE[] ccElements;
 	private byte[] commentFieldData;
 
-	public PCE() {
+	protected PCE(Tag tag) {
 		super();
+		this.tag = tag;
+
 		frontElements = new TaggedElement[MAX_FRONT_CHANNEL_ELEMENTS];
 		sideElements = new TaggedElement[MAX_SIDE_CHANNEL_ELEMENTS];
 		backElements = new TaggedElement[MAX_BACK_CHANNEL_ELEMENTS];
@@ -86,7 +131,6 @@ public class PCE extends Element implements AudioDecoderInfo {
 	}
 
 	public void decode(BitStream in) {
-		readElementInstanceTag(in);
 
 		profile = Profile.forInt(1+in.readBits(2));
 

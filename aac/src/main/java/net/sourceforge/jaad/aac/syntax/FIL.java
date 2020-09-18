@@ -11,7 +11,7 @@ import net.sourceforge.jaad.aac.AACException;
  * in any order in the raw data block.
  */
 
-class FIL extends Element {
+class FIL {
 
 	private static final int TYPE_FILL = 0;
 	private static final int TYPE_FILL_DATA = 1;
@@ -22,23 +22,12 @@ class FIL extends Element {
 
 	private DRC dri;
 
-	FIL() {
-		super();
-	}
-
-	@Override
-	protected int readElementInstanceTag(BitStream in) {
-		super.readElementInstanceTag(in);
-		if(elementInstanceTag==15)
-			elementInstanceTag += in.readBits(8)-1;
-
-		return elementInstanceTag;
-	}
-
 	void decode(BitStream in, ChannelElement prev) {
 
-		// for FIL elements the instance tag is a size instead.
-		final int count = readElementInstanceTag(in);
+		int count = in.readBits(4);
+		if(count==15)
+			count += in.readBits(8)-1;
+
 		final int pos = in.getPosition();
 		final int end = pos + 8 * count;
 

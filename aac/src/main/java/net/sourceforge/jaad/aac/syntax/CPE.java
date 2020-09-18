@@ -5,6 +5,7 @@ import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.tools.MSMask;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,16 +21,43 @@ import java.util.logging.Logger;
  */
 
 public class CPE extends ChannelElement {
+
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.CPE"); //for debugging
+
+	public static final Type TYPE = Type.CPE;
+
+	static class Tag extends ChannelTag {
+
+		protected Tag(int id) {
+			super(id);
+		}
+
+		@Override
+		public boolean isChannelPair() {
+			return true;
+		}
+
+		@Override
+		public Type getType() {
+			return TYPE;
+		}
+
+		@Override
+		public ChannelElement newElement(DecoderConfig config) {
+			return new CPE(config, this);
+		}
+	}
+
+	public static final List<Tag> TAGS = Element.createTagList(16, Tag::new);
 
 	private MSMask msMask;
 	private boolean[] msUsed;
 	private boolean commonWindow;
 	private final ICStream icsL, icsR;
 
-	CPE(DecoderConfig config) {
-		super(config);
-		msUsed = new boolean[MAX_MS_MASK];
+	public CPE(DecoderConfig config, ChannelTag tag) {
+		super(config, tag);
+		msUsed = new boolean[Constants.MAX_MS_MASK];
 		icsL = new ICStream(config);
 		icsR = new ICStream(config);
 	}
@@ -42,8 +70,7 @@ public class CPE extends ChannelElement {
  		return true;
 	}
 
-	void decode(BitStream in, DecoderConfig conf) {
-		readElementInstanceTag(in);
+	public void decode(BitStream in) {
 
 		commonWindow = in.readBool();
 		final ICSInfo infoL = icsL.getInfo();
@@ -52,8 +79,8 @@ public class CPE extends ChannelElement {
 		LOGGER.log(Level.FINE, ()->String.format("CPE %s", commonWindow? "common":""));
 
 		if(commonWindow) {
-			infoL.decode(in, conf, commonWindow);
-			infoR.setCommonData(in, conf, infoL);
+			infoL.decode(in, config, commonWindow);
+			infoR.setCommonData(in, config, infoL);
 
 			msMask = MSMask.forInt(in.readBits(2));
 			if(msMask.equals(MSMask.TYPE_USED)) {
@@ -78,8 +105,8 @@ public class CPE extends ChannelElement {
 			Arrays.fill(msUsed, false);
 		}
 
-		icsL.decode(in, commonWindow, conf);
-		icsR.decode(in, commonWindow, conf);
+		icsL.decode(in, commonWindow, config);
+		icsR.decode(in, commonWindow, config);
 	}
 
 	public ICStream getLeftChannel() {
