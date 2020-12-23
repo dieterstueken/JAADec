@@ -200,7 +200,7 @@ public class PCE implements Element, AudioDecoderInfo {
 	}
 
 	public int getChannelCount() {
-		int count = lfeChannelElementsCount+assocDataElementsCount;
+		int count = lfeChannelElementsCount;//+assocDataElementsCount;
 
 		for(int n=0; n<frontChannelElementsCount; ++n)
 			count += frontElements[n].isCPE ? 2 : 1;

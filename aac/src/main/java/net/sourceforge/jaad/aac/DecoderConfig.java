@@ -240,9 +240,9 @@ public class DecoderConfig {
 
 		// expect implicit SBR for low frequencies
 		// see 4.6.18.2.6
-		if(sbrEnabled && !sbrPresent && sampleFrequency.duplicated()!=SF_NONE) {
-			setSBRPresent();
-		}
+		//if(sbrEnabled && !sbrPresent && sampleFrequency.duplicated()!=SF_NONE) {
+		//	setSBRPresent();
+		//}
 
 		return this;
 	}

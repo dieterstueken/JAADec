@@ -20,6 +20,7 @@ class FIL {
 	private static final int TYPE_SBR_DATA = 13;
 	private static final int TYPE_SBR_DATA_CRC = 14;
 
+	// decoded but unused.
 	private DRC dri;
 
 	void decode(BitStream in, ChannelElement prev) {
@@ -33,8 +34,7 @@ class FIL {
 
 		int left = end-in.getPosition();
 
-		if(left>4)
-			decodeExtensionPayload(in, left, prev);
+		decodeExtensionPayload(in, left, prev);
 
 		left = end-in.getPosition();
 
@@ -44,27 +44,31 @@ class FIL {
 			in.skipBits(left);
 	}
 
-	private int decodeExtensionPayload(BitStream in, int count, ChannelElement prev) {
-		final int type = in.readBits(4);
-		int ret = count-4;
+	private void decodeExtensionPayload(BitStream in, int count, ChannelElement prev) {
+
+		int type = TYPE_FILL;
+		if(count>=4) {
+			type = in.readBits(4);
+			count -= 4;
+		}
+
 		switch(type) {
 			case TYPE_DYNAMIC_RANGE:
-				ret = decodeDynamicRangeInfo(in, ret);
+				decodeDynamicRangeInfo(in, count);
 				break;
 			case TYPE_SBR_DATA:
 			case TYPE_SBR_DATA_CRC:
-				prev.decodeSBR(in, ret, (type==TYPE_SBR_DATA_CRC));
-				ret = 0;
-				break;
+				if(prev!=null) {
+					count = prev.decodeSBR(in, count, (type == TYPE_SBR_DATA_CRC));
+					break;
+				}
 			case TYPE_FILL:
 			case TYPE_FILL_DATA:
 			case TYPE_EXT_DATA_ELEMENT:
 			default:
-				in.skipBits(ret);
-				ret = 0;
+				in.skipBits(count);
 				break;
 		}
-		return ret;
 	}
 
 	private int decodeDynamicRangeInfo(BitStream in, int count) {

@@ -1,8 +1,14 @@
 package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.DecoderConfig;
+import net.sourceforge.jaad.aac.Profile;
+import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.filterbank.FilterBank;
+import net.sourceforge.jaad.aac.tools.LTPrediction;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /**
@@ -16,6 +22,8 @@ import java.util.List;
  */
 
 class SCE extends ChannelElement {
+
+	static final Logger LOGGER = Logger.getLogger("jaad.SCE"); //for debugging
 
 	public static final Type TYPE = Type.SCE;
 
@@ -73,4 +81,67 @@ class SCE extends ChannelElement {
 
 		return false;
 	}
+
+	public List<float[]> process(FilterBank filterBank, List<CCE> cces) {
+		final ICSInfo info = ics.getInfo();
+
+		//inverse quantization
+		final float[] iqData = ics.getInvQuantData();
+
+		final float[] dataL = getDataL();
+
+		final SampleFrequency sf = config.getSampleFrequency().getNominal();
+
+		//prediction
+		if(config.getProfile().equals(Profile.AAC_MAIN)&&info.isICPredictionPresent())
+			info.getICPrediction().process(ics, iqData, sf);
+
+		final LTPrediction ltp = info.getLTPrediction();
+		if(ltp!=null)
+			ltp.process(ics, iqData, filterBank, sf);
+
+		//dependent coupling
+		processDependentCoupling(cces, CCE.BEFORE_TNS, iqData, null);
+
+		//TNS
+		if(ics.isTNSDataPresent())
+			ics.getTNS().process(ics, iqData, sf, false);
+
+		//dependent coupling
+		processDependentCoupling(cces, CCE.AFTER_TNS, iqData, null);
+
+		//filterbank
+		filterBank.process(info.getWindowSequence(), info.getWindowShape(ICSInfo.CURRENT), info.getWindowShape(ICSInfo.PREVIOUS), iqData, dataL, ics.getOverlap());
+
+		if(ltp!=null)
+			ltp.updateState(dataL, ics.getOverlap(), config.getProfile());
+
+		//dependent coupling
+		processIndependentCoupling(cces, dataL, null);
+
+		//gain control
+		if(ics.isGainControlPresent())
+			ics.getGainControl().process(iqData, info.getWindowShape(ICSInfo.CURRENT), info.getWindowShape(ICSInfo.PREVIOUS), info.getWindowSequence());
+
+
+		channelData.clear();
+		channelData.add(dataL);
+
+		//SBR
+		if(isSBRPresent()&&config.isSBREnabled()) {
+			if(dataL.length!=config.getSampleLength())
+				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
+
+			if(sbr.isPSUsed()) {
+				float[] dataR = getDataR();
+				getSBR().processPS(dataL, dataR, false);
+				channelData.add(dataR);
+			}
+			else
+				getSBR().process(dataL, false);
+		}
+
+		return channelData;
+	}
+
 }

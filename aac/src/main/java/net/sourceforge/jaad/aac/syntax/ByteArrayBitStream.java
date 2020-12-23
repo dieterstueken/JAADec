@@ -23,6 +23,13 @@ public class ByteArrayBitStream implements BitStream {
 	protected int bitsCached; //remaining bits in current cache
 	protected int position; //number of total bits read
 
+	public String toString() {
+		if(buffer==null)
+			return "[]";
+		else
+			return String.format("[%d;%d]", getPosition(), 8*buffer.length);
+	}
+
 	public ByteArrayBitStream() {
 	}
 

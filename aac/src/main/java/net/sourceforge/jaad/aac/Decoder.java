@@ -1,12 +1,12 @@
 package net.sourceforge.jaad.aac;
 
-import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.PCE;
 import net.sourceforge.jaad.aac.syntax.SyntacticElements;
 import net.sourceforge.jaad.aac.transport.ADIFHeader;
 
 import javax.sound.sampled.AudioFormat;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +20,6 @@ public class Decoder {
 
 	private final DecoderConfig config;
 	private final SyntacticElements syntacticElements;
-	private final FilterBank filterBank;
 	public int frames=0;
 	private ADIFHeader adifHeader;
 
@@ -69,8 +68,6 @@ public class Decoder {
 		this.config = config;
 
 		syntacticElements = new SyntacticElements(config);
-		filterBank = new FilterBank(config.isSmallFrameUsed(), config.getChannelConfiguration().getChannelCount());
-
 
 		LOGGER.log(Level.INFO, "profile: {0}", config.getProfile());
 		LOGGER.log(Level.INFO, "sf: {0}", config.getSampleFrequency().getFrequency());
@@ -88,7 +85,8 @@ public class Decoder {
 	 * @param buffer a buffer to hold the decoded PCM data
 	 * @throws AACException if decoding fails
 	 */
-	public void decodeFrame(byte[] frame, SampleBuffer buffer) {
+
+	public void decodeFrame(byte[] frame, Receiver buffer) {
 
 		BitStream in = BitStream.open(frame);
 
@@ -104,7 +102,7 @@ public class Decoder {
 		}
 	}
 
-	private void decode(BitStream in, SampleBuffer buffer) {
+	private void decode(BitStream in, Receiver buffer) {
 		if(ADIFHeader.isPresent(in)) {
 			adifHeader = ADIFHeader.readHeader(in);
 			PCE pce = adifHeader.getFirstPCE();
@@ -116,21 +114,12 @@ public class Decoder {
 
 		syntacticElements.startNewFrame();
 
-		try {
-			//1: bitstream parsing and noiseless coding
-			syntacticElements.decode(in);
-			//2: spectral processing
-			syntacticElements.process(filterBank);
-			//3: send to output buffer
-			syntacticElements.sendToOutput(buffer);
-		}
-		catch(Exception e) {
-			buffer.setData(new byte[0], 0, 0, 0, 0);
-			if(e instanceof AACException)
-				throw (AACException) e;
-			else
-				throw new AACException(e);
-		}
+		//1: bitstream parsing and noiseless coding
+		syntacticElements.decode(in);
+		//2: spectral processing
+		List<float[]> channels = syntacticElements.process();
+		//3: send to output buffer
+		buffer.accept(channels, config.getSampleLength(), config.getOutputFrequency().getFrequency());
 	}
 
 	public AudioFormat getAudioFormat() {
@@ -143,6 +132,6 @@ public class Decoder {
 				&& freq < 24000)
 			freq *= 2;
 
-		return new AudioFormat(freq,16,2, true, false);
+		return new AudioFormat(freq,16, config.getChannelCount(), true, false);
 	}
 }

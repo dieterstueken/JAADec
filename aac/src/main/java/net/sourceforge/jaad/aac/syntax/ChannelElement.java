@@ -1,7 +1,11 @@
 package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.DecoderConfig;
+import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.sbr.SBR;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by IntelliJ IDEA.
@@ -95,24 +99,61 @@ abstract public class ChannelElement implements Element {
 		return dataR;
     }
 
-	/**
-	 * A SCE or LFE may return a second channel if isStereo()
-	 * Else the left channel is returned for both.
-	 *
-	 * @param ch to read.
-	 * @return a float array.
-	 */
-	public float[] getChannelData(int ch) {
-		if(ch==0)
-			return getDataL();
+    final List<float[]> channelData = new ArrayList<>(2);
 
-		if(ch==1) {
-			if(isStereo())
-				return getDataR();
-			else
-				return getDataL();
+	abstract public List<float[]> process(FilterBank filterBank, List<CCE> cces);
+
+	void processDependentCoupling(List<CCE> cces, int couplingPoint, float[] dataL, float[] dataR) {
+
+		final int elementID = getElementInstanceTag().getId();
+
+		for (CCE cce : cces) {
+			int index = 0;
+			if(cce!=null&&cce.getCouplingPoint()==couplingPoint) {
+				for(int c = 0; c<=cce.getCoupledCount(); c++) {
+					int chSelect = cce.getCHSelect(c);
+					if(cce.isChannelPair(c)==isChannelPair()&&cce.getIDSelect(c)==elementID) {
+						if(chSelect!=1) {
+							cce.applyDependentCoupling(index, dataL);
+							if(chSelect!=0)
+								index++;
+						}
+						if(chSelect!=2) {
+							cce.applyDependentCoupling(index, dataR);
+							index++;
+						}
+					}
+					else
+						index += 1+((chSelect==3) ? 1 : 0);
+				}
+			}
 		}
-
-		throw new IndexOutOfBoundsException("invalid channel: " + ch);
 	}
+
+	void processIndependentCoupling(List<CCE> cces, float[] dataL, float[] dataR) {
+
+		final int elementID = getElementInstanceTag().getId();
+
+		for (CCE cce : cces) {
+			int index = 0;
+			if (cce != null && cce.getCouplingPoint() == CCE.AFTER_IMDCT) {
+				for (int c = 0; c <= cce.getCoupledCount(); c++) {
+					int chSelect = cce.getCHSelect(c);
+					if (cce.isChannelPair(c) == isChannelPair() && cce.getIDSelect(c) == elementID) {
+						if (chSelect != 1) {
+							cce.applyIndependentCoupling(index, dataL);
+							if (chSelect != 0)
+								index++;
+						}
+						if (chSelect != 2) {
+							cce.applyIndependentCoupling(index, dataR);
+							index++;
+						}
+					} else
+						index += 1 + ((chSelect == 3) ? 1 : 0);
+				}
+			}
+		}
+	}
+
 }
