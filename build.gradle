@@ -19,13 +19,11 @@ allprojects {
         }
 
         jar {
-            baseName = project.name
             manifest {
                 attributes 'Manifest-Version': '1.0'
-                attributes 'Implementation-Version': version
+                attributes 'Implementation-Version': archiveVersion
             }
         }
-
     }
     
     repositories {
@@ -34,6 +32,6 @@ allprojects {
 }
 
 dependencies {
-    compile (project(':aac'))
-    compile (project(':mp4'))
+    implementation (project(':aac'))
+    implementation (project(':mp4'))
 }

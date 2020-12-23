@@ -141,7 +141,7 @@ took place after reading the first frame.
 Thus SBR detection or implicit assumptions was moved to DecoderConfig which manages
 two frequencies now. For frequencies lower than 96000/2 SBR is generally expected.
 If SBR was expected but is missing later the output sample is upsampled by
-duplicating each pulse. Imlicit SBR may be enabled using the flag sbrEnabled.
+duplicating each pulse. Implicit SBR may be enabled using the flag sbrEnabled.
 
 There are additional explicit extensions to signal SBR which have been incomplete.
 
@@ -161,5 +161,14 @@ Switched to Java11.
 
 upgrade to gradle 6.6.1
 
-Each Element is identified by an Element.InstanceTag which is read independently.
-The Element.InstanceTag is used to identify reusable Elements to decode the content of a frame.   
+Identify each Element by an Element.InstanceTag which is read independently.
+The Element.InstanceTag is used to identify reusable Elements to decode the content of a frame.
+
+**2020-12-23**
+
+Cleanup SyntacticElements.
+Moved several methods (processSingle/Pair/Coupling) into SCE and CPE.
+Introduced a Receiver interface to send a list of float[] channels to.
+Encoding of float[] into byte[] (sendToOutput) is implemented by Buffer itself now.
+
+upgrade to gradle 6.7.1
