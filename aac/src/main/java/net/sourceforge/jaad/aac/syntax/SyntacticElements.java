@@ -87,33 +87,33 @@ public class SyntacticElements implements Constants {
 		else {
 			//error resilient raw data block
 			switch(config.getChannelConfiguration()) {
-				case CHANNEL_CONFIG_MONO:
+				case MONO:
 					decode(SCE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_STEREO:
+				case STEREO:
 					decode(CPE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_STEREO_PLUS_CENTER:
+				case STEREO_PLUS_CENTER:
 					decode(SCE.TAGS, in);
 					decode(CPE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_STEREO_PLUS_CENTER_PLUS_REAR_MONO:
+				case STEREO_PLUS_CENTER_PLUS_REAR_MONO:
 					decode(SCE.TAGS, in);
 					decode(CPE.TAGS, in);
 					decode(LFE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_FIVE:
+				case FIVE:
 					decode(SCE.TAGS, in);
 					decode(CPE.TAGS, in);
 					decode(CPE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_FIVE_PLUS_ONE:
+				case FIVE_PLUS_ONE:
 					decode(SCE.TAGS, in);
 					decode(CPE.TAGS, in);
 					decode(CPE.TAGS, in);
 					decode(LFE.TAGS, in);
 					break;
-				case CHANNEL_CONFIG_SEVEN_PLUS_ONE:
+				case SEVEN_PLUS_ONE:
 					decode(SCE.TAGS, in);
 					decode(CPE.TAGS, in);
 					decode(CPE.TAGS, in);

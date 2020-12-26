@@ -220,6 +220,6 @@ public class PCE implements Element, AudioDecoderInfo {
 	 * @return a matching ChannelConfiguration according its channel count.
 	 */
 	public ChannelConfiguration getChannelConfiguration() {
-		return ChannelConfiguration.forInt(getChannelCount());
+		return ChannelConfiguration.forChannelCount(getChannelCount());
 	}
 }

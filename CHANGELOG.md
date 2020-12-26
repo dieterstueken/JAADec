@@ -172,3 +172,9 @@ Introduced a Receiver interface to send a list of float[] channels to.
 Encoding of float[] into byte[] (sendToOutput) is implemented by Buffer itself now.
 
 upgrade to gradle 6.7.1
+
+**2020-12-25**
+
+Introduced a Speaker enumeration. Each ChannelConfiguration provides a list of speakers now.
+To simplify lookup by channel count an additional (but invalid) ChannelConfiguration for 7 Speakers was inserted. 
+

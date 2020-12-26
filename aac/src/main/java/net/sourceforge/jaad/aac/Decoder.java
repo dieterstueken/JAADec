@@ -128,7 +128,7 @@ public class Decoder {
 
 		// assume SBR/PS
 		if(!config.getProfile().isErrorResilientProfile()
-				&& config.getChannelConfiguration()==ChannelConfiguration.CHANNEL_CONFIG_MONO
+				&& config.getChannelConfiguration()==ChannelConfiguration.MONO
 				&& freq < 24000)
 			freq *= 2;
 

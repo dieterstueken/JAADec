@@ -97,7 +97,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 		//if(conf.isScalefactorResilienceUsed()) rvlc.decodeScalefactors(this, in, scaleFactors);
 
 		if(conf.isSpectralDataResilienceUsed()) {
-			int max = (conf.getChannelConfiguration()==ChannelConfiguration.CHANNEL_CONFIG_STEREO) ? 6144 : 12288;
+			int max = (conf.getChannelConfiguration()==ChannelConfiguration.STEREO) ? 6144 : 12288;
 			reorderedSpectralDataLen = Math.max(in.readBits(14), max);
 			longestCodewordLen = Math.max(in.readBits(6), 49);
 			//HCR.decodeReorderedSpectralData(this, in, data, conf.isSectionDataResilienceUsed());
