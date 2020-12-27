@@ -1,4 +1,6 @@
-package net.sourceforge.jaad.aac;
+package net.sourceforge.jaad;
+
+import net.sourceforge.jaad.aac.Receiver;
 
 import javax.sound.sampled.AudioFormat;
 import java.nio.ByteBuffer;
