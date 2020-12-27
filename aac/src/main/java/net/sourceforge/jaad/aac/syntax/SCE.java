@@ -1,10 +1,8 @@
 package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.filterbank.FilterBank;
-import net.sourceforge.jaad.aac.tools.LTPrediction;
+import net.sourceforge.jaad.aac.sbr.SBR;
 
 import java.util.List;
 import java.util.logging.Level;
@@ -60,6 +58,7 @@ class SCE extends ChannelElement {
 	}
 
 	public void decode(BitStream in) {
+		super.decode(in);
 		ics.decode(in, false, config);
 	}
 
@@ -83,46 +82,35 @@ class SCE extends ChannelElement {
 	}
 
 	public List<float[]> process(FilterBank filterBank, List<CCE> cces) {
-		final ICSInfo info = ics.getInfo();
 
 		//inverse quantization
 		final float[] iqData = ics.getInvQuantData();
-
 		final float[] dataL = getDataL();
 
-		final SampleFrequency sf = config.getSampleFrequency().getNominal();
-
 		//prediction
-		if(config.getProfile().equals(Profile.AAC_MAIN)&&info.isICPredictionPresent())
-			info.getICPrediction().process(ics, iqData, sf);
+		ics.processICP();
 
-		final LTPrediction ltp = info.getLTPrediction();
-		if(ltp!=null)
-			ltp.process(ics, iqData, filterBank, sf);
+		ics.processLTP(filterBank);
 
 		//dependent coupling
 		processDependentCoupling(cces, CCE.BEFORE_TNS, iqData, null);
 
 		//TNS
-		if(ics.isTNSDataPresent())
-			ics.getTNS().process(ics, iqData, sf, false);
+		ics.processTNS();
 
 		//dependent coupling
 		processDependentCoupling(cces, CCE.AFTER_TNS, iqData, null);
 
 		//filterbank
-		filterBank.process(info.getWindowSequence(), info.getWindowShape(ICSInfo.CURRENT), info.getWindowShape(ICSInfo.PREVIOUS), iqData, dataL, ics.getOverlap());
+		ics.process(dataL, filterBank);
 
-		if(ltp!=null)
-			ltp.updateState(dataL, ics.getOverlap(), config.getProfile());
+		ics.updateLTP(dataL);
 
 		//dependent coupling
 		processIndependentCoupling(cces, dataL, null);
 
 		//gain control
-		if(ics.isGainControlPresent())
-			ics.getGainControl().process(iqData, info.getWindowShape(ICSInfo.CURRENT), info.getWindowShape(ICSInfo.PREVIOUS), info.getWindowSequence());
-
+		ics.processGainControl();
 
 		channelData.clear();
 		channelData.add(dataL);
@@ -137,8 +125,12 @@ class SCE extends ChannelElement {
 				getSBR().processPS(dataL, dataR, false);
 				channelData.add(dataR);
 			}
-			else
+			else {
 				getSBR().process(dataL, false);
+				channelData.add(dataL);
+			}
+		} else if(dataL.length!=config.getFrameLength()) {
+			SBR.upsample(dataL);
 		}
 
 		return channelData;

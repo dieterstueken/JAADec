@@ -1,6 +1,9 @@
 package net.sourceforge.jaad.aac.syntax;
 
-import net.sourceforge.jaad.aac.*;
+import net.sourceforge.jaad.aac.AACException;
+import net.sourceforge.jaad.aac.DecoderConfig;
+import net.sourceforge.jaad.aac.Profile;
+import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.tools.ICPrediction;
 import net.sourceforge.jaad.aac.tools.LTPrediction;
 
@@ -14,7 +17,7 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 	public static final int PREVIOUS = 0;
 	public static final int CURRENT = 1;
 
-	public static enum WindowSequence {
+	public enum WindowSequence {
 
 		ONLY_LONG_SEQUENCE,
 		LONG_START_SEQUENCE,
@@ -42,6 +45,10 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 			return w;
 		}
 	}
+
+	final DecoderConfig config;
+
+	final SampleFrequency sf;
 	private final int frameLength;
 	private WindowSequence windowSequence;
 	private int[] windowShape;
@@ -49,7 +56,7 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 	//prediction
 	private boolean predictionDataPresent;
 	private ICPrediction icPredict;
-	private LTPrediction ltPredict;
+	LTPrediction ltPredict;
 	//windows/sfbs
 	private int windowCount;
 	private int windowGroupCount;
@@ -58,18 +65,19 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 	private int[] swbOffsets;
 
 	public ICSInfo(DecoderConfig config) {
+		this.config = config;
+		this.sf = config.getSampleFrequency().getNominal();
 		this.frameLength = config.getFrameLength();
-		windowShape = new int[2];
-		windowSequence = WindowSequence.ONLY_LONG_SEQUENCE;
-		windowGroupLength = new int[MAX_WINDOW_GROUP_COUNT];
+		this.windowShape = new int[2];
+		this.windowSequence = WindowSequence.ONLY_LONG_SEQUENCE;
+		this.windowGroupLength = new int[MAX_WINDOW_GROUP_COUNT];
 
 		if(LTPrediction.isLTPProfile(config.getProfile()))
-			ltPredict = new LTPrediction(frameLength);
+			this.ltPredict = new LTPrediction(frameLength);
 	}
 
 	/* ========== decoding ========== */
-	public void decode(BitStream in, DecoderConfig conf, boolean commonWindow) {
-		final SampleFrequency sf = conf.getSampleFrequency().getNominal();
+	public void decode(BitStream in, boolean commonWindow) {
 
 		in.skipBit(); //reserved
 		windowSequence = WindowSequence.forInt(in.readBits(2));
@@ -101,13 +109,15 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 			swbCount = SWB_LONG_WINDOW_COUNT[sf.getIndex()];
 			predictionDataPresent = in.readBool();
 			if(predictionDataPresent)
-				readPredictionData(in, conf.getProfile(), sf, commonWindow);
+				readPredictionData(in, commonWindow);
 		}
 	}
 
-	private void readPredictionData(BitStream in, Profile profile, SampleFrequency sf, boolean commonWindow) {
+	private void readPredictionData(BitStream in, boolean commonWindow) {
 
 		LOGGER.fine("prediction present");
+		Profile profile = config.getProfile();
+
 		switch(profile) {
 			case AAC_MAIN:
 				if(icPredict==null)
@@ -127,6 +137,10 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 	/* =========== gets ============ */
 	public int getMaxSFB() {
 		return maxSFB;
+	}
+
+	public int getSFB() {
+		return Math.min(sf.getMaximalPredictionSFB(), maxSFB);
 	}
 
 	public int getSWBCount() {
@@ -165,19 +179,13 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 		return windowShape[index];
 	}
 
-	public boolean isICPredictionPresent() {
-		return predictionDataPresent;
+	public void processICP(float[] data) {
+		if(config.getProfile().equals(Profile.AAC_MAIN))
+			if(icPredict!=null && predictionDataPresent)
+				icPredict.process(this, data);
 	}
 
-	public ICPrediction getICPrediction() {
-		return icPredict;
-	}
-
-	public LTPrediction getLTPrediction() {
-		return ltPredict;
-	}
-
-	public void setCommonData(BitStream in, DecoderConfig conf, ICSInfo info) {
+	public void setCommonData(BitStream in, ICSInfo info) {
 
 		windowSequence = WindowSequence.valueOf(info.windowSequence.name());
 		windowShape[PREVIOUS] = windowShape[CURRENT];
@@ -194,6 +202,6 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 		swbOffsets = Constants.copyOf(info.swbOffsets);
 
 		if(predictionDataPresent && ltPredict!=null)
-			ltPredict.decode(in, this, conf.getProfile());
+			ltPredict.decode(in, this, config.getProfile());
 	}
 }

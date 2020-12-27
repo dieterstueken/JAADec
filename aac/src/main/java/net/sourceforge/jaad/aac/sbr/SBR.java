@@ -18,6 +18,16 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 	final SampleFrequency sample_rate;
 	int maxAACLine;
 
+	boolean valid = false;
+
+	public void invalidate() {
+		valid = false;
+	}
+
+	public boolean isValid() {
+		return valid;
+	}
+
 	int rate;
 	boolean just_seeked;
 	int ret;
@@ -420,6 +430,8 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 			result = 1;
 		}
 
+		valid = true;
+
 		num_sbr_bits2 = (int) (ld.getPosition()-num_sbr_bits1);
 
 		LOGGER.log(Level.FINE, () -> String.format("SBR left %d @%d", num_sbr_bits2, ld.getPosition()));
@@ -449,8 +461,6 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 
 	/* table 3 */
 	private void sbr_header(BitStream ld) {
-		boolean bs_header_extra_1, bs_header_extra_2;
-
 		this.header_count++;
 
 		this.bs_amp_res = ld.readBool();
@@ -461,8 +471,8 @@ public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants
 		this.bs_stop_freq = ld.readBits(4);
 		this.bs_xover_band = ld.readBits(3);
 		ld.readBits(2); //reserved
-		bs_header_extra_1 = ld.readBool();
-		bs_header_extra_2 = ld.readBool();
+		boolean bs_header_extra_1 = ld.readBool();
+		boolean bs_header_extra_2 = ld.readBool();
 
 		if(bs_header_extra_1) {
 			this.bs_freq_scale = ld.readBits(2);

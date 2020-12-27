@@ -3,7 +3,6 @@ package net.sourceforge.jaad.aac.tools;
 import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.ICSInfo;
-import net.sourceforge.jaad.aac.syntax.ICStream;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,13 +58,12 @@ public class ICPrediction {
 		}*/
 	}
 
-	public void process(ICStream ics, float[] data, SampleFrequency sf) {
-		final ICSInfo info = ics.getInfo();
+	public void process(ICSInfo info, float[] data) {
 
 		if(info.isEightShortFrame())
 			resetAllPredictors();
 		else {
-			final int len = Math.min(sf.getMaximalPredictionSFB(), info.getMaxSFB());
+			final int len = info.getSFB();
 			final int[] swbOffsets = info.getSWBOffsets();
 			for(int sfb = 0; sfb<len; sfb++) {
 				for(int k = swbOffsets[sfb]; k<swbOffsets[sfb+1]; k++) {

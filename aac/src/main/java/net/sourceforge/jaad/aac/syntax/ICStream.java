@@ -4,6 +4,7 @@ import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.ChannelConfiguration;
 import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.error.RVLC;
+import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.gain.GainControl;
 import net.sourceforge.jaad.aac.huffman.HCB;
 import net.sourceforge.jaad.aac.huffman.Huffman;
@@ -25,7 +26,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 	private final ICSInfo info;
 	private final int[] sfbCB;
 	private final int[] sectEnd;
-	private final float[] data;
+	private final float[] iqData;
 	private final float[] scaleFactors;
 	private int globalGain;
 	private boolean pulseDataPresent, tnsDataPresent, gainControlPresent;
@@ -44,12 +45,12 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 
 	public ICStream(DecoderConfig config) {
 		this.frameLength = config.getFrameLength();
-		info = new ICSInfo(config);
-		sfbCB = new int[MAX_SECTIONS];
-		sectEnd = new int[MAX_SECTIONS];
-		data = new float[frameLength];
-		scaleFactors = new float[MAX_SECTIONS];
-		overlap = new float[frameLength];
+		this.info = new ICSInfo(config);
+		this.sfbCB = new int[MAX_SECTIONS];
+		this.sectEnd = new int[MAX_SECTIONS];
+		this.iqData = new float[frameLength];
+		this.scaleFactors = new float[MAX_SECTIONS];
+		this.overlap = new float[frameLength];
 	}
 
 	/* ========= decoding ========== */
@@ -62,7 +63,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 		globalGain = in.readBits(8);
 
 		if(!commonWindow)
-			info.decode(in, conf, commonWindow);
+			info.decode(in, commonWindow);
 
 		decodeSectionData(in, conf.isSectionDataResilienceUsed());
 
@@ -218,7 +219,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 	}
 
 	private void decodeSpectralData(BitStream in) {
-		Arrays.fill(data, 0);
+		Arrays.fill(iqData, 0);
 		final int maxSFB = info.getMaxSFB();
 		final int windowGroups = info.getWindowGroupCount();
 		final int[] offsets = info.getSWBOffsets();
@@ -235,7 +236,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 				width = offsets[sfb+1]-offsets[sfb];
 				if(hcb==ZERO_HCB||hcb==INTENSITY_HCB||hcb==INTENSITY_HCB2) {
 					for(w = 0; w<groupLen; w++, off += 128) {
-						Arrays.fill(data, off, off+width, 0);
+						Arrays.fill(iqData, off, off+width, 0);
 					}
 				}
 				else if(hcb==NOISE_HCB) {
@@ -245,13 +246,13 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 
 						for(k = 0; k<width; k++) {
 							randomState = 1664525*randomState+1013904223;
-							data[off+k] = randomState;
-							energy += data[off+k]*data[off+k];
+							iqData[off+k] = randomState;
+							energy += iqData[off+k]* iqData[off+k];
 						}
 
 						final float scale = (float) (scaleFactors[idx]/Math.sqrt(energy));
 						for(k = 0; k<width; k++) {
-							data[off+k] *= scale;
+							iqData[off+k] *= scale;
 						}
 					}
 				}
@@ -263,8 +264,8 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 
 							//inverse quantization & scaling
 							for(j = 0; j<num; j++) {
-								data[off+k+j] = (buf[j]>0) ? IQ_TABLE[buf[j]] : -IQ_TABLE[-buf[j]];
-								data[off+k+j] *= scaleFactors[idx];
+								iqData[off+k+j] = (buf[j]>0) ? IQ_TABLE[buf[j]] : -IQ_TABLE[-buf[j]];
+								iqData[off+k+j] *= scaleFactors[idx];
 							}
 						}
 					}
@@ -282,7 +283,7 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 	 * @return the inverse quantized and scaled data
 	 */
 	public float[] getInvQuantData() {
-		return data;
+		return iqData;
 	}
 
 	public float[] getOverlap() {
@@ -305,12 +306,36 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 		return scaleFactors;
 	}
 
-	public boolean isTNSDataPresent() {
-		return tnsDataPresent;
+	public void process(float[] data, FilterBank filterBank) {
+		filterBank.process(info.getWindowSequence(), info.getWindowShape(ICSInfo.CURRENT), info.getWindowShape(ICSInfo.PREVIOUS),
+				iqData, data, overlap);
 	}
 
-	public TNS getTNS() {
-		return tns;
+	private void processTNS(float[] data, boolean decode) {
+		if(tns!=null && tnsDataPresent)
+			tns.process(this, data, info.sf, decode);
+	}
+
+	public void processICP() {
+		info.processICP(this.iqData);
+	}
+
+	public void processTNS() {
+		processTNS(this.iqData, false);
+	}
+
+	public void processTNS(float[] data) {
+		processTNS(data, true);
+	}
+
+	public void processLTP(FilterBank filterBank) {
+		if(info.ltPredict!=null)
+			info.ltPredict.process(this, filterBank);
+	}
+
+	public void updateLTP(float[] data) {
+		if(info.ltPredict!=null)
+			info.ltPredict.updateState(data, getOverlap(), info.config.getProfile());
 	}
 
 	public int getGlobalGain() {
@@ -329,11 +354,11 @@ public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
 		return reorderedSpectralDataLen;
 	}
 
-	public boolean isGainControlPresent() {
-		return gainControlPresent;
-	}
-
-	public GainControl getGainControl() {
-		return gainControl;
+	public void processGainControl() {
+		if(gainControl!=null && gainControlPresent)
+			gainControl.process(this.iqData,
+					info.getWindowShape(ICSInfo.CURRENT),
+					info.getWindowShape(ICSInfo.PREVIOUS),
+					info.getWindowSequence());
 	}
 }

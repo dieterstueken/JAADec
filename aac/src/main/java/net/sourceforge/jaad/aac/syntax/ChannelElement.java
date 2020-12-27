@@ -53,6 +53,11 @@ abstract public class ChannelElement implements Element {
 
 	protected SBR sbr;
 
+	public void decode(BitStream in) {
+		if(sbr!=null)
+			sbr.invalidate();
+	}
+
     int decodeSBR(BitStream in, int count, boolean crc) {
 
     	if(!config.isSBREnabled()) {
@@ -73,7 +78,7 @@ abstract public class ChannelElement implements Element {
    	}
 
    	boolean isSBRPresent() {
-   		return sbr!=null;
+   		return sbr!=null && sbr.isValid();
    	}
 
    	SBR getSBR() {
@@ -155,5 +160,4 @@ abstract public class ChannelElement implements Element {
 			}
 		}
 	}
-
 }

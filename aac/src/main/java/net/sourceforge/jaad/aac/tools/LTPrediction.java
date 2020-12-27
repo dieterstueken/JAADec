@@ -2,7 +2,6 @@ package net.sourceforge.jaad.aac.tools;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 import net.sourceforge.jaad.aac.syntax.Constants;
@@ -91,10 +90,12 @@ public class LTPrediction implements Constants {
 		}
 	}
 
-	public void process(ICStream ics, float[] data, FilterBank filterBank, SampleRate sf) {
+	public void process(ICStream ics, FilterBank filterBank) {
 
 		if(!isPresent)
 			return;
+
+		float[] data = ics.getInvQuantData();
 
 		final ICSInfo info = ics.getInfo();
 
@@ -110,8 +111,7 @@ public class LTPrediction implements Constants {
 			filterBank.processLTP(info.getWindowSequence(), info.getWindowShape(ICSInfo.CURRENT),
 					info.getWindowShape(ICSInfo.PREVIOUS), in, out);
 
-			if(ics.isTNSDataPresent())
-				ics.getTNS().process(ics, out, sf, true);
+			ics.processTNS(out);
 
 			final int[] swbOffsets = info.getSWBOffsets();
 			final int swbOffsetMax = info.getSWBOffsetMax();

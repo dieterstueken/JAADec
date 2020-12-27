@@ -2,11 +2,9 @@ package net.sourceforge.jaad.aac.syntax;
 
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.DecoderConfig;
-import net.sourceforge.jaad.aac.Profile;
-import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.filterbank.FilterBank;
+import net.sourceforge.jaad.aac.sbr.SBR;
 import net.sourceforge.jaad.aac.tools.IS;
-import net.sourceforge.jaad.aac.tools.LTPrediction;
 import net.sourceforge.jaad.aac.tools.MS;
 import net.sourceforge.jaad.aac.tools.MSMask;
 
@@ -77,6 +75,7 @@ public class CPE extends ChannelElement {
 	}
 
 	public void decode(BitStream in) {
+		super.decode(in);
 
 		commonWindow = in.readBool();
 		final ICSInfo infoL = icsL.getInfo();
@@ -85,8 +84,8 @@ public class CPE extends ChannelElement {
 		LOGGER.log(Level.FINE, ()->String.format("CPE %s", commonWindow? "common":""));
 
 		if(commonWindow) {
-			infoL.decode(in, config, commonWindow);
-			infoR.setCommonData(in, config, infoL);
+			infoL.decode(in, commonWindow);
+			infoR.setCommonData(in, infoL);
 
 			msMask = MSMask.forInt(in.readBits(2));
 			if(msMask.equals(MSMask.TYPE_USED)) {
@@ -155,64 +154,38 @@ public class CPE extends ChannelElement {
 		if(isCommonWindow()&isMSMaskPresent())
 			MS.process(this, iqDataL, iqDataR);
 
-		SampleFrequency sf = config.getSampleFrequency().getNominal();
+		//prediction
+		icsL.processICP();
+		icsR.processICP();
 
-		if(config.getProfile().equals(Profile.AAC_MAIN)) {
-
-			if(infoL.isICPredictionPresent()) {
-				infoL.getICPrediction().process(icsL, iqDataL, sf);
-			}
-
-			if(infoR.isICPredictionPresent()) {
-				infoR.getICPrediction().process(icsR, iqDataR, sf);
-			}
-		}
 		//IS
 		IS.process(this, iqDataL, iqDataR);
 
-		LTPrediction ltp1 = infoL.getLTPrediction();
-		LTPrediction ltp2 = infoR.getLTPrediction();
-
-		if(ltp1!=null) {
-			ltp1.process(icsL, iqDataL, filterBank, sf);
-		}
-
-		if(ltp2!=null) {
-			ltp2.process(icsR, iqDataR, filterBank, sf);
-		}
+		icsL.processLTP(filterBank);
+		icsR.processLTP(filterBank);
 
 		//dependent coupling
 		processDependentCoupling(cces, CCE.BEFORE_TNS, iqDataL, iqDataR);
 
-		//TNS
-		if(icsL.isTNSDataPresent())
-			icsL.getTNS().process(icsL, iqDataL, sf, false);
-
-		if(icsR.isTNSDataPresent())
-			icsR.getTNS().process(icsR, iqDataR, sf, false);
+		icsL.processTNS();
+		icsR.processTNS();
 
 		//dependent coupling
 		processDependentCoupling(cces, CCE.AFTER_TNS, iqDataL, iqDataR);
 
 		//filterbank
-		filterBank.process(infoL.getWindowSequence(), infoL.getWindowShape(ICSInfo.CURRENT), infoL.getWindowShape(ICSInfo.PREVIOUS), iqDataL, dataL, icsL.getOverlap());
-		filterBank.process(infoR.getWindowSequence(), infoR.getWindowShape(ICSInfo.CURRENT), infoR.getWindowShape(ICSInfo.PREVIOUS), iqDataR, dataR, icsR.getOverlap());
+		icsL.process(dataL, filterBank);
+		icsR.process(dataR, filterBank);
 
-		if(ltp1!=null)
-			ltp1.updateState(dataL, icsL.getOverlap(), config.getProfile());
-
-		if(ltp2!=null)
-			ltp2.updateState(dataR, icsR.getOverlap(), config.getProfile());
+		icsL.updateLTP(dataL);
+		icsR.updateLTP(dataR);
 
 		//independent coupling
 		processIndependentCoupling(cces, dataL, dataR);
 
 		//gain control
-		if(icsL.isGainControlPresent())
-			icsL.getGainControl().process(iqDataL, infoL.getWindowShape(ICSInfo.CURRENT), infoL.getWindowShape(ICSInfo.PREVIOUS), infoL.getWindowSequence());
-
-		if(icsR.isGainControlPresent())
-			icsR.getGainControl().process(iqDataR, infoR.getWindowShape(ICSInfo.CURRENT), infoR.getWindowShape(ICSInfo.PREVIOUS), infoR.getWindowSequence());
+		icsL.processGainControl();
+		icsR.processGainControl();
 
 		//SBR
 		if(isSBRPresent()&&config.isSBREnabled()) {
@@ -220,6 +193,9 @@ public class CPE extends ChannelElement {
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
 			getSBR().process(dataL, dataR, false);
+		} else if(dataL.length!=config.getFrameLength()) {
+			SBR.upsample(dataL);
+			SBR.upsample(dataR);
 		}
 
 		channelData.clear();
