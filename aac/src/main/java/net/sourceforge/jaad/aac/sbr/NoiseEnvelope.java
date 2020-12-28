@@ -1,6 +1,6 @@
 package net.sourceforge.jaad.aac.sbr;
 
-class NoiseEnvelope implements Constants {
+class NoiseEnvelope {
 
 	private static final float[] E_deq_tab = {
 		64.0f, 128.0f, 256.0f, 512.0f, 1024.0f, 2048.0f, 4096.0f, 8192.0f,
@@ -220,7 +220,7 @@ class NoiseEnvelope implements Constants {
 
 					for(k = 0; k<sbr.n[sbr.f[ch][l]]; k++) {
 						for(i = 0; i<sbr.N_high; i++) {
-							if(sbr.f_table_res[HI_RES][i]==sbr.f_table_res[LO_RES][k]) {
+							if(sbr.f_table_res[FBT.HI_RES][i]==sbr.f_table_res[FBT.LO_RES][k]) {
 								if(l==0)
 									E_prev = sbr.E_prev[ch][i];
 								else
@@ -237,8 +237,8 @@ class NoiseEnvelope implements Constants {
 
 					for(k = 0; k<sbr.n[sbr.f[ch][l]]; k++) {
 						for(i = 0; i<sbr.N_low; i++) {
-							if((sbr.f_table_res[LO_RES][i]<=sbr.f_table_res[HI_RES][k])
-								&&(sbr.f_table_res[HI_RES][k]<sbr.f_table_res[LO_RES][i+1])) {
+							if((sbr.f_table_res[FBT.LO_RES][i]<=sbr.f_table_res[FBT.HI_RES][k])
+								&&(sbr.f_table_res[FBT.HI_RES][k]<sbr.f_table_res[FBT.LO_RES][i+1])) {
 								if(l==0)
 									E_prev = sbr.E_prev[ch][i];
 								else

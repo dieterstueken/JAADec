@@ -1,10 +1,28 @@
 package net.sourceforge.jaad.aac.sbr;
 
-import java.util.Arrays;
-
 import net.sourceforge.jaad.aac.SampleFrequency;
 
-class FBT implements Constants {
+import java.util.Arrays;
+
+class FBT {
+
+	static final int[] startMinTable = {7, 7, 10, 11, 12, 16, 16, 17, 24, 32, 35, 48};
+
+	static final int[] offsetIndexTable = {5, 5, 4, 4, 4, 3, 2, 1, 0, 6, 6, 6};
+
+	static final int[][] OFFSET = {
+		{-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7}, //16000
+		{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13}, //22050
+		{-5, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16}, //24000
+		{-6, -4, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16}, //32000
+		{-4, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16, 20}, //44100-64000
+		{-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16, 20, 24}, //>64000
+		{0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16, 20, 24, 28, 33}
+	};
+
+	public static final int LO_RES = 0;
+
+	public static final int HI_RES = 1;
 
 	/* calculate the start QMF channel for the master frequency band table */
 	/* parameter is also called k0 */

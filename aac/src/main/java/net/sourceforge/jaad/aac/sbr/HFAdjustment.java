@@ -1,6 +1,6 @@
 package net.sourceforge.jaad.aac.sbr;
 
-class HFAdjustment implements Constants, NoiseTable {
+class HFAdjustment implements NoiseTable {
 
 	private static final float[] h_smooth = {
 		0.03183050093751f, 0.11516383427084f,
@@ -11,18 +11,18 @@ class HFAdjustment implements Constants, NoiseTable {
 	private static final int[] phi_im = {0, 1, 0, -1};
 	private static final float[] limGain = {0.5f, 1.0f, 2.0f, 1e10f};
 	private static final float EPS = 1e-12f;
-	private float[][] G_lim_boost = new float[MAX_L_E][MAX_M];
-	private float[][] Q_M_lim_boost = new float[MAX_L_E][MAX_M];
-	private float[][] S_M_boost = new float[MAX_L_E][MAX_M];
+	private float[][] G_lim_boost = new float[SBR.MAX_L_E][SBR.MAX_M];
+	private float[][] Q_M_lim_boost = new float[SBR.MAX_L_E][SBR.MAX_M];
+	private float[][] S_M_boost = new float[SBR.MAX_L_E][SBR.MAX_M];
 
 	public static int hf_adjustment(SBR sbr, float[][][] Xsbr, int ch) {
 		HFAdjustment adj = new HFAdjustment();
 		int ret = 0;
 
-		if(sbr.bs_frame_class[ch]==FIXFIX) {
+		if(sbr.bs_frame_class[ch]== FrameClass.FIXFIX) {
 			sbr.l_A[ch] = -1;
 		}
-		else if(sbr.bs_frame_class[ch]==VARFIX) {
+		else if(sbr.bs_frame_class[ch]== FrameClass.VARFIX) {
 			if(sbr.bs_pointer[ch]>1)
 				sbr.l_A[ch] = sbr.bs_pointer[ch]-1;
 			else
@@ -47,7 +47,7 @@ class HFAdjustment implements Constants, NoiseTable {
 	}
 
 	private static int get_S_mapped(SBR sbr, int ch, int l, int current_band) {
-		if(sbr.f[ch][l]==HI_RES) {
+		if(sbr.f[ch][l]== FBT.HI_RES) {
 			/* in case of using f_table_high we just have 1 to 1 mapping
 			 * from bs_add_harmonic[l][k]
 			 */
@@ -253,10 +253,10 @@ class HFAdjustment implements Constants, NoiseTable {
 		int current_t_noise_band = 0;
 		int S_mapped;
 
-		float[] Q_M_lim = new float[MAX_M];
-		float[] G_lim = new float[MAX_M];
+		float[] Q_M_lim = new float[SBR.MAX_M];
+		float[] G_lim = new float[SBR.MAX_M];
 		float G_boost;
-		float[] S_M = new float[MAX_M];
+		float[] S_M = new float[SBR.MAX_M];
 
 		for(l = 0; l<sbr.L_E[ch]; l++) {
 			int current_f_noise_band = 0;
@@ -328,7 +328,7 @@ class HFAdjustment implements Constants, NoiseTable {
 
 
 					/* check if m is on a HI_RES band border */
-					if((m+sbr.kx)==sbr.f_table_res[HI_RES][current_hi_res_band+1]) {
+					if((m+sbr.kx)==sbr.f_table_res[FBT.HI_RES][current_hi_res_band+1]) {
 						/* step to next HI_RES band */
 						current_hi_res_band++;
 					}
@@ -342,7 +342,7 @@ class HFAdjustment implements Constants, NoiseTable {
 					if((l>=sbr.l_A[ch])
 						||(sbr.bs_add_harmonic_prev[ch][current_hi_res_band]!=0&&sbr.bs_add_harmonic_flag_prev[ch])) {
 						/* find the middle subband of the HI_RES frequency band */
-						if((m+sbr.kx)==(sbr.f_table_res[HI_RES][current_hi_res_band+1]+sbr.f_table_res[HI_RES][current_hi_res_band])>>1)
+						if((m+sbr.kx)==(sbr.f_table_res[FBT.HI_RES][current_hi_res_band+1]+sbr.f_table_res[FBT.HI_RES][current_hi_res_band])>>1)
 							S_index_mapped = sbr.bs_add_harmonic[ch][current_hi_res_band];
 					}
 

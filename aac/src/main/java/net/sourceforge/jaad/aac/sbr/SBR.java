@@ -10,9 +10,21 @@ import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SBR implements Constants, HuffmanTables {
+public class SBR implements HuffmanTables {
 
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.sbr.SBR"); //for debugging
+
+	static final int EXTENSION_ID_PS = 2;
+	static final int MAX_NTSR = 32; //max number_time_slots * rate, ok for DRM and not DRM mode
+	static final int MAX_M = 49; //maximum value for M
+	static final int EXT_SBR_DATA = 13;
+	static final int EXT_SBR_DATA_CRC = 14;
+	static final int NO_TIME_SLOTS_960 = 15;
+	static final int NO_TIME_SLOTS = 16;
+	static final int RATE = 2;
+	static final int NOISE_FLOOR_OFFSET = 6;
+	static final int T_HFGEN = 8;
+	static final int T_HFADJ = 2;
 
 	private final boolean downSampledSBR;
 	final SampleFrequency sample_rate;
@@ -60,6 +72,7 @@ public class SBR implements Constants, HuffmanTables {
 	int[] L_E_prev = new int[2];
 	int[] L_Q = new int[2];
 
+	public static final int MAX_L_E = 5; //maximum value for L_E
 	int[][] t_E = new int[2][MAX_L_E+1];
 	int[][] t_Q = new int[2][3];
 	int[][] f = new int[2][MAX_L_E+1];
@@ -118,6 +131,7 @@ public class SBR implements Constants, HuffmanTables {
 	AnalysisFilterbank[] qmfa = new AnalysisFilterbank[2];
 	SynthesisFilterbank[] qmfs = new SynthesisFilterbank[2];
 
+	public static final int MAX_NTSRHFG = 40; //maximum of number_time_slots * rate + HFGen. 16*2+8
 	float[][][][] Xsbr = new float[2][MAX_NTSRHFG][64][2];
 
 	int numTimeSlotsRate;
@@ -155,7 +169,7 @@ public class SBR implements Constants, HuffmanTables {
 	int bs_extension_id;
 	int bs_extension_data;
 	boolean bs_coupling;
-	int[] bs_frame_class = new int[2];
+	FrameClass[] bs_frame_class = new FrameClass[2];
 	int[][] bs_rel_bord = new int[2][9];
 	int[][] bs_rel_bord_0 = new int[2][9];
 	int[][] bs_rel_bord_1 = new int[2][9];
@@ -651,7 +665,7 @@ public class SBR implements Constants, HuffmanTables {
 			int[] saved_t_E = new int[6], saved_t_Q = new int[3];
 			int saved_L_E = this.L_E[0];
 			int saved_L_Q = this.L_Q[0];
-			int saved_frame_class = this.bs_frame_class[0];
+			FrameClass saved_frame_class = this.bs_frame_class[0];
 
 			for(n = 0; n<saved_L_E; n++) {
 				saved_t_E[n] = this.t_E[0][n];
@@ -751,9 +765,9 @@ public class SBR implements Constants, HuffmanTables {
 		int bs_num_env = 0;
 		int saved_L_E = this.L_E[ch];
 		int saved_L_Q = this.L_Q[ch];
-		int saved_frame_class = this.bs_frame_class[ch];
+		FrameClass saved_frame_class = this.bs_frame_class[ch];
 
-		this.bs_frame_class[ch] = ld.readBits(2);
+		this.bs_frame_class[ch] = FrameClass.read(ld);
 
 		switch(this.bs_frame_class[ch]) {
 			case FIXFIX:
@@ -840,7 +854,7 @@ public class SBR implements Constants, HuffmanTables {
 				break;
 		}
 
-		if(this.bs_frame_class[ch]==VARVAR)
+		if(this.bs_frame_class[ch]== FrameClass.VARVAR)
 			this.L_E[ch] = Math.min(bs_num_env, 5);
 		else
 			this.L_E[ch] = Math.min(bs_num_env, 4);
@@ -931,7 +945,7 @@ public class SBR implements Constants, HuffmanTables {
 		int delta = 0;
 		int[][] t_huff, f_huff;
 
-		if((this.L_E[ch]==1)&&(this.bs_frame_class[ch]==FIXFIX))
+		if((this.L_E[ch]==1)&&(this.bs_frame_class[ch]== FrameClass.FIXFIX))
 			this.amp_res[ch] = false;
 		else
 			this.amp_res[ch] = this.bs_amp_res;

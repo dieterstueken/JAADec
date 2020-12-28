@@ -1,6 +1,6 @@
 package net.sourceforge.jaad.aac.sbr;
 
-class TFGrid implements Constants {
+class TFGrid  {
 
 
 	/* function constructs new time border vector */
