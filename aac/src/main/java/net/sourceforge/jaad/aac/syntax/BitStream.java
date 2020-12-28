@@ -26,6 +26,8 @@ public interface BitStream {
 
     void byteAlign();
 
+    BitStream readSubStream(int n);
+
     static BitStream open(byte[] data) {
         return new ByteArrayBitStream(data);
     }

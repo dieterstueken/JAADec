@@ -15,13 +15,10 @@ public class SyntacticElements {
 
 	//global properties
 	private DecoderConfig config;
-	private int bitsRead;
 
 	private final FilterBank filterBank;
 
 	//elements
-
-	private FIL fil;
 
 	private List<CCE> cces = new ArrayList<>();
 
@@ -47,7 +44,6 @@ public class SyntacticElements {
 	}
 
 	public final void startNewFrame() {
-		bitsRead = 0;
 		audioElements.clear();
 		cces.clear();
 		channels.clear();
@@ -128,8 +124,6 @@ public class SyntacticElements {
 		}
 		in.byteAlign();
 
-		bitsRead = in.getPosition()-start;
-
 		LOGGER.finest("END");
 	}
 
@@ -160,17 +154,77 @@ public class SyntacticElements {
 		return element;
 	}
 
+	private static final int EXT_FILL = 0;
+	private static final int EXT_FILL_DATA = 1;
+	private static final int EXT_DATA_ELEMENT = 2;
+	private static final int EXT_DYNAMIC_RANGE = 11;
+	private static final int EXT_SAC_DATA = 12;
+	private static final int EXT_SBR_DATA = 13;
+	private static final int EXT_SBR_DATA_CRC = 14;
+
+	private void decodeFIL(BitStream in) {
+
+		int count = in.readBits(4);
+		if(count==15)
+			count += in.readBits(8)-1;
+
+		if(count==0)
+			return;
+
+		in = in.readSubStream(8*count);
+
+		int type = in.readBits(4);
+
+		switch(type) {
+			case EXT_DYNAMIC_RANGE:
+				decodeDynamicRangeInfo(in);
+				break;
+
+			case EXT_SBR_DATA:
+			case EXT_SBR_DATA_CRC:
+				decodeSBR(in, type);
+				break;
+
+			case EXT_FILL:
+			case EXT_FILL_DATA:
+				break;
+
+			case EXT_SAC_DATA:
+				decodeSAC(in);
+				break;
+
+			case EXT_DATA_ELEMENT:
+				decodeExtData(in);
+		}
+	}
+
 	private ChannelElement getLastAudioElement() {
 		int n = audioElements.size();
 		return n==0 ? null : audioElements.get(n-1);
 	}
 
-	private void decodeFIL(BitStream in) {
+	private void decodeSBR(BitStream in, int type) {
+		ChannelElement prev = getLastAudioElement();
+		if(prev!=null)
+			prev.decodeSBR(in, (type == EXT_SBR_DATA_CRC));
+	}
 
-		if(fil==null)
-			fil = new FIL();
+	// decoded but unused.
+	private DRC dri;
 
-		fil.decode(in, getLastAudioElement());
+	private void decodeDynamicRangeInfo(BitStream in) {
+		if (dri == null)
+			dri = new DRC();
+
+		dri.decode(in);
+	}
+
+	private void decodeSAC(BitStream in) {
+
+	}
+
+	private void decodeExtData(BitStream in) {
+
 	}
 
 	public List<float[]> process() {

@@ -58,11 +58,10 @@ abstract public class ChannelElement implements Element {
 			sbr.invalidate();
 	}
 
-    int decodeSBR(BitStream in, int count, boolean crc) {
+	void decodeSBR(BitStream in, boolean crc) {
 
     	if(!config.isSBREnabled()) {
-			in.skipBits(count);
-			return 0;
+			return;
 		}
 
    		if(sbr==null) {
@@ -70,11 +69,9 @@ abstract public class ChannelElement implements Element {
    			sbr = new SBR(config.isSmallFrameUsed(), isChannelPair(), config.getOutputFrequency(), config.isSBRDownSampled());
    		}
 
-   		int result = sbr.decode(in, count, crc);
+   		sbr.decode(in, crc);
    		if(sbr.isPSUsed())
    			config.setPsPresent();
-
-   		return result;
    	}
 
    	boolean isSBRPresent() {

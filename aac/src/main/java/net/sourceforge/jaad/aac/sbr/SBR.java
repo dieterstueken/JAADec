@@ -1,13 +1,11 @@
 package net.sourceforge.jaad.aac.sbr;
 
-import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.ps.PS;
 import net.sourceforge.jaad.aac.syntax.BitStream;
 
 import java.util.Arrays;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static net.sourceforge.jaad.aac.sbr.HuffmanTables.*;
@@ -372,18 +370,12 @@ public class SBR {
 	}
 
 	/* table 2 */
-	public int decode(BitStream ld, int bits, boolean crc) {
-		int result = 0;
-		int num_align_bits = 0;
-		long num_sbr_bits1 = ld.getPosition();
-		int num_sbr_bits2;
+	public void decode(BitStream ld, boolean crc) {
 
 		int saved_start_freq, saved_samplerate_mode;
 		int saved_stop_freq, saved_freq_scale;
 		int saved_xover_band;
 		boolean saved_alter_scale;
-
-		LOGGER.log(Level.FINE, () -> String.format("SBR start %d @%d", bits, num_sbr_bits1));
 
 		if(crc) {
 			this.bs_sbr_crc_bits = ld.readBits(10);
@@ -422,57 +414,27 @@ public class SBR {
 				}
 			}
 
-			if(result==0) {
-				result = sbr_data(ld);
+			int result = sbr_data(ld);
 
 				/* sbr_data() returning an error means that there was an error in
 				 envelope_time_border_vector().
 				 In this case the old time border vector is saved and all the previous
 				 data normally read after sbr_grid() is saved.
 				 */
-				/* to be on the safe side, calculate old sbr tables in case of error */
-				if((result>0)
-					&&(this.Reset||(this.bs_header_flag&&this.just_seeked))) {
-					calc_sbr_tables(saved_start_freq, saved_stop_freq,
-						saved_samplerate_mode, saved_freq_scale,
-						saved_alter_scale, saved_xover_band);
-				}
-
-				/* we should be able to safely set result to 0 now, */
-				/* but practise indicates this doesn't work well */
+			/* to be on the safe side, calculate old sbr tables in case of error */
+			if((result>0)
+				&&(this.Reset||(this.bs_header_flag&&this.just_seeked))) {
+				calc_sbr_tables(saved_start_freq, saved_stop_freq,
+					saved_samplerate_mode, saved_freq_scale,
+					saved_alter_scale, saved_xover_band);
 			}
-		}
-		else {
-			result = 1;
-		}
 
-		valid = true;
+			/* we should be able to safely set result to 0 now, */
+			/* but practise indicates this doesn't work well */
 
-		num_sbr_bits2 = (int) (ld.getPosition()-num_sbr_bits1);
-
-		LOGGER.log(Level.FINE, () -> String.format("SBR left %d @%d", num_sbr_bits2, ld.getPosition()));
-
-		/* check if we read more bits then were available for sbr */
-		if(bits<num_sbr_bits2) {
-			throw new AACException("frame overread");
-			//faad_resetbits(ld, num_sbr_bits1+8*cnt);
-			//num_sbr_bits2 = 8*cnt;
-
-			/* turn off PS for the unfortunate case that we randomly read some
-			 * PS data that looks correct */
-			//this.ps_used = 0;
-
-			/* Make sure it doesn't decode SBR in this frame, or we'll get glitches */
-			//return 1;
-		}
-
-		{
-			/* -4 does not apply, bs_extension_type is re-read in this function */
-			num_align_bits = bits /*- 4*/-num_sbr_bits2;
-			ld.skipBits(num_align_bits);
-		}
-
-		return result;
+			valid = (result==0);
+		} else
+			valid = true;
 	}
 
 	/* table 3 */

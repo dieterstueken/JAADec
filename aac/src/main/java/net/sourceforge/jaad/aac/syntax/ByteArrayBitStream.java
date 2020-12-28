@@ -17,7 +17,9 @@ public class ByteArrayBitStream implements BitStream {
 	private static final int WORD_BITS = 32;
 	private static final int WORD_BYTES = 4;
 	private static final int BYTE_MASK = 0xff;
+
 	private byte[] buffer;
+	private int length; // # of bits in buffer
 	private int pos; //offset in the buffer array
 	private int cache; //current 4 bytes, that are read from the buffer
 	protected int bitsCached; //remaining bits in current cache
@@ -27,13 +29,33 @@ public class ByteArrayBitStream implements BitStream {
 		if(buffer==null)
 			return "[]";
 		else
-			return String.format("[%d;%d]", getPosition(), 8*buffer.length);
+			return String.format("[%d;%d]", getPosition(), length);
 	}
 
-	public ByteArrayBitStream() {
+	ByteArrayBitStream() {
 	}
 
-	public ByteArrayBitStream(byte[] data) {
+	/**
+	 * Clone a subset of an other BitStream
+	 * @param other BitStream
+	 * @param size of this sub stream
+	 */
+	ByteArrayBitStream(ByteArrayBitStream other, int size) {
+
+		if(other.getBitsLeft() < size)
+			throw new EOSException("stream overrun");
+
+		this.length = other.position + size;
+		this.buffer = other.buffer;
+		this.pos = other.pos;
+		this.cache = other.cache;
+		this.bitsCached = other.bitsCached;
+		this.position = other.position;
+
+		other.skipBits(size);
+	}
+
+	ByteArrayBitStream(byte[] data) {
 		setData(data);
 	}
 
@@ -46,6 +68,7 @@ public class ByteArrayBitStream implements BitStream {
 		reset();
 
 		int size = data.length;
+		this.length = 8*size;
 
 		// reduce the buffer size to an integer number of words
 		int shift = size%WORD_BYTES;
@@ -68,6 +91,14 @@ public class ByteArrayBitStream implements BitStream {
 		System.arraycopy(data, shift, buffer, 0, buffer.length);
 	}
 
+	@Override
+	public BitStream readSubStream(int n) {
+		if(getBitsLeft()<n)
+			throw new EOSException("stream overrun");
+
+		return new ByteArrayBitStream(this, n);
+	}
+
 	public void byteAlign() {
 		log(Level.FINER, "@%d byteAlign: %d", position);
 		final int toFlush = bitsCached&7;
@@ -77,6 +108,7 @@ public class ByteArrayBitStream implements BitStream {
 
 	public final void reset() {
 		pos = 0;
+		length = 0;
 		bitsCached = 0;
 		cache = 0;
 		position = 0;
@@ -87,7 +119,7 @@ public class ByteArrayBitStream implements BitStream {
 	}
 
 	public int getBitsLeft() {
-		return 8*(buffer.length-pos)+bitsCached;
+		return length - position;
 	}
 
 	/**
@@ -98,6 +130,7 @@ public class ByteArrayBitStream implements BitStream {
 		int i;
 		if(pos>buffer.length-WORD_BYTES)
 			throw new EOSException("end of stream");
+
 		else i = ((buffer[pos]&BYTE_MASK)<<24)
 					|((buffer[pos+1]&BYTE_MASK)<<16)
 					|((buffer[pos+2]&BYTE_MASK)<<8)
@@ -109,6 +142,9 @@ public class ByteArrayBitStream implements BitStream {
 
 	public int readBits(int n) {
 		log(n==0 ? Level.FINEST:Level.FINER, "@%d readBits: %d", n);
+
+		if(getBitsLeft()<n)
+			throw new EOSException("stream overrun");
 
 		int result;
 		if(bitsCached>=n) {
@@ -129,18 +165,22 @@ public class ByteArrayBitStream implements BitStream {
 
 	public int readBit() {
 		log(Level.FINER, "@%d readBit: %d", 1);
+
+		if(getBitsLeft()<1)
+			throw new EOSException("stream overrun");
+
 		int i;
 		if(bitsCached>0) {
 			bitsCached--;
 			i = (cache>>(bitsCached))&1;
-			position++;
 		}
 		else {
 			cache = readCache(false);
 			bitsCached = WORD_BITS-1;
-			position++;
 			i = (cache>>bitsCached)&1;
 		}
+
+		position++;
 		return i;
 	}
 
@@ -150,6 +190,10 @@ public class ByteArrayBitStream implements BitStream {
 
 	public int peekBits(int n) {
 		log(Level.FINER, "@%d peekBits: %d", n);
+
+		if(getBitsLeft()<n)
+			throw new EOSException("stream overrun");
+
 		int ret;
 		if(bitsCached>=n) {
 			ret = (cache>>(bitsCached-n))&maskBits(n);
@@ -166,6 +210,10 @@ public class ByteArrayBitStream implements BitStream {
 
 	public int peekBit() {
 		log(Level.FINER, "@%d peekBit: %d", 1);
+
+		if(getBitsLeft()<1)
+			throw new EOSException("stream overrun");
+
 		int ret;
 		if(bitsCached>0) {
 			ret = (cache>>(bitsCached-1))&1;
@@ -179,6 +227,10 @@ public class ByteArrayBitStream implements BitStream {
 
 	public void skipBits(int n) {
 		log(Level.FINER, "@%d skipBits: %d", n);
+
+		if(getBitsLeft()<n)
+			throw new EOSException("stream overrun");
+
 		position += n;
 		if(n<=bitsCached) {
 			bitsCached -= n;
@@ -202,6 +254,10 @@ public class ByteArrayBitStream implements BitStream {
 
 	public void skipBit() {
 		log(Level.FINER, "@%d skipBit: %d", 1);
+
+		if(getBitsLeft()<1)
+			throw new EOSException("end of stream");
+
 		position++;
 		if(bitsCached>0) {
 			bitsCached--;
@@ -212,7 +268,7 @@ public class ByteArrayBitStream implements BitStream {
 		}
 	}
 
-	public int maskBits(int n) {
+	public static int maskBits(int n) {
 		int i;
 		if(n==32)
 			i = -1;

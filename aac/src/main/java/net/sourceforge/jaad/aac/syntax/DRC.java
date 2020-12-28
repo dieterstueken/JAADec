@@ -28,10 +28,8 @@ public class DRC {
         additionalExcludedChannels = new boolean[MAX_NBR_BANDS];
     }
     
-    public int decode(BitStream in, int count) {
-        
-   		int ret = count;
-   
+    public void decode(BitStream in) {
+
    		int bandCount = 1;
    
    		//pce tag
@@ -42,19 +40,17 @@ public class DRC {
    
    		//excluded channels
    		if(excludedChannelsPresent = in.readBool()) {
-   			ret -= decodeExcludedChannels(in);
+   			decodeExcludedChannels(in);
    		}
    
    		//bands
    		if(bandsPresent = in.readBool()) {
    			bandsIncrement = in.readBits(4);
    			interpolationScheme = in.readBits(4);
-   			ret -= 8;
    			bandCount += bandsIncrement;
    			bandTop = new int[bandCount];
    			for(int i = 0; i<bandCount; i++) {
    				bandTop[i] = in.readBits(8);
-   				ret -= 8;
    			}
    		}
    
@@ -62,7 +58,6 @@ public class DRC {
    		if(progRefLevelPresent = in.readBool()) {
    			progRefLevel = in.readBits(7);
    			progRefLevelReservedBits = in.readBits(1);
-   			ret -= 8;
    		}
    
    		dynRngSgn = new boolean[bandCount];
@@ -70,9 +65,7 @@ public class DRC {
    		for(int i = 0; i<bandCount; i++) {
    			dynRngSgn[i] = in.readBool();
    			dynRngCtl[i] = in.readBits(7);
-   			ret -= 8;
    		}
-   		return ret;
    	}
    
    	private int decodeExcludedChannels(BitStream in) {
