@@ -15,8 +15,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 //TODO: apply pulse data
-public class ICStream implements Constants, HCB, ScaleFactorTable, IQTable {
+public class ICStream implements HCB, ScaleFactorTable, IQTable {
+
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.ICStream"); //for debugging
+
+	public static final int MAX_SECTIONS = 120;
 
 	private static final int SF_DELTA = 60;
 	private static final int SF_OFFSET = 200;

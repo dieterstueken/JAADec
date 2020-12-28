@@ -17,7 +17,7 @@ import java.util.List;
  * are as for single_channel_element().
  */
 
-class CCE implements Element, Constants {
+class CCE implements Element {
 
 	public static final Type TYPE = Type.CCE;
 

@@ -1,9 +1,12 @@
 package net.sourceforge.jaad.aac.filterbank;
 
-import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.ICSInfo.WindowSequence;
 
-public class FilterBank implements Constants, SineWindows, KBDWindows {
+public class FilterBank implements SineWindows, KBDWindows {
+
+	//frame length
+	public static final int WINDOW_LEN_LONG = 1024;
+	public static final int WINDOW_SMALL_LEN_LONG = 960;
 
 	private final float[][] LONG_WINDOWS;// = {SINE_LONG, KBD_LONG};
 	private final float[][] SHORT_WINDOWS;// = {SINE_SHORT, KBD_SHORT};
@@ -14,13 +17,13 @@ public class FilterBank implements Constants, SineWindows, KBDWindows {
 	public FilterBank(boolean smallFrames, int channels) {
 		if(smallFrames) {
 			length = WINDOW_SMALL_LEN_LONG;
-			shortLen = WINDOW_SMALL_LEN_SHORT;
+			shortLen = length/8;
 			LONG_WINDOWS = new float[][]{SINE_960, KBD_960};
 			SHORT_WINDOWS = new float[][]{SINE_120, KBD_120};
 		}
 		else {
 			length = WINDOW_LEN_LONG;
-			shortLen = WINDOW_LEN_SHORT;
+			shortLen = length/8;
 			LONG_WINDOWS = new float[][]{SINE_1024, KBD_1024};
 			SHORT_WINDOWS = new float[][]{SINE_128, KBD_128};
 		}

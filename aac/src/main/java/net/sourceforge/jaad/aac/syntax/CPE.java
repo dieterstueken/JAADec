@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 
 public class CPE extends ChannelElement {
 
-	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.CPE"); //for debugging
+    static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.CPE"); //for debugging
 
 	public static final Type TYPE = Type.CPE;
 
@@ -54,6 +54,8 @@ public class CPE extends ChannelElement {
 
 	public static final List<Tag> TAGS = Element.createTagList(16, Tag::new);
 
+	public static final int MAX_MS_MASK = 128;
+
 	private MSMask msMask;
 	private boolean[] msUsed;
 	private boolean commonWindow;
@@ -61,7 +63,7 @@ public class CPE extends ChannelElement {
 
 	public CPE(DecoderConfig config, ChannelTag tag) {
 		super(config, tag);
-		msUsed = new boolean[Constants.MAX_MS_MASK];
+		msUsed = new boolean[MAX_MS_MASK];
 		icsL = new ICStream(config);
 		icsR = new ICStream(config);
 	}

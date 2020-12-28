@@ -4,12 +4,18 @@ import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.Profile;
 import net.sourceforge.jaad.aac.SampleFrequency;
+import net.sourceforge.jaad.aac.tools.Arrays;
 import net.sourceforge.jaad.aac.tools.ICPrediction;
 import net.sourceforge.jaad.aac.tools.LTPrediction;
 
 import java.util.logging.Logger;
 
-public class ICSInfo implements Constants, ScaleFactorBands {
+public class ICSInfo implements ScaleFactorBands {
+
+	//maximum numbers
+	public static final int MAX_WINDOW_COUNT = 8;
+	public static final int MAX_WINDOW_GROUP_COUNT = MAX_WINDOW_COUNT;
+
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.ICSInfo"); //for debugging
 
 	public static final int WINDOW_SHAPE_SINE = 0;
@@ -197,9 +203,9 @@ public class ICSInfo implements Constants, ScaleFactorBands {
 
 		windowCount = info.windowCount;
 		windowGroupCount = info.windowGroupCount;
-		windowGroupLength = Constants.copyOf(info.windowGroupLength);
+		windowGroupLength = Arrays.copyOf(info.windowGroupLength);
 		swbCount = info.swbCount;
-		swbOffsets = Constants.copyOf(info.swbOffsets);
+		swbOffsets = Arrays.copyOf(info.swbOffsets);
 
 		if(predictionDataPresent && ltPredict!=null)
 			ltPredict.decode(in, this, config.getProfile());

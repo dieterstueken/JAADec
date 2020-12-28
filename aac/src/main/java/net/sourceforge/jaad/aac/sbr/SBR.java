@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SBR implements Constants, net.sourceforge.jaad.aac.syntax.Constants, HuffmanTables {
+public class SBR implements Constants, HuffmanTables {
 
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.sbr.SBR"); //for debugging
 

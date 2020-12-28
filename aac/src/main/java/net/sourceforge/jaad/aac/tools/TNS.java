@@ -3,7 +3,6 @@ package net.sourceforge.jaad.aac.tools;
 import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.syntax.BitStream;
-import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.ICSInfo;
 import net.sourceforge.jaad.aac.syntax.ICStream;
 
@@ -13,7 +12,7 @@ import java.util.logging.Logger;
  * Temporal Noise Shaping
  * @author in-somnia
  */
-public class TNS implements Constants, TNSTables {
+public class TNS implements TNSTables {
 
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.TNS"); //for debugging
 

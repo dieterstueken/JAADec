@@ -4,7 +4,6 @@ import net.sourceforge.jaad.aac.AACException;
 import net.sourceforge.jaad.aac.Profile;
 import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.syntax.BitStream;
-import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.ICSInfo;
 import net.sourceforge.jaad.aac.syntax.ICStream;
 
@@ -14,9 +13,11 @@ import java.util.logging.Logger;
  * Long-term prediction
  * @author in-somnia
  */
-public class LTPrediction implements Constants {
+public class LTPrediction {
 
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.syntax.LTPrediction"); //for debugging
+
+	public static final int MAX_LTP_SFB = 40;
 
 	private static final float[] CODEBOOK = {
 		0.570829f,
@@ -157,10 +158,10 @@ public class LTPrediction implements Constants {
 		lag = ltp.lag;
 		lastBand = ltp.lastBand;
 		lagUpdate = ltp.lagUpdate;
-		shortUsed = Constants.copyOf(ltp.shortUsed);
-		shortLagPresent = Constants.copyOf(ltp.shortLagPresent);
-		shortLag = Constants.copyOf(ltp.shortLag);
-		longUsed = Constants.copyOf(ltp.longUsed);
+		shortUsed = Arrays.copyOf(ltp.shortUsed);
+		shortLagPresent = Arrays.copyOf(ltp.shortLagPresent);
+		shortLag = Arrays.copyOf(ltp.shortLag);
+		longUsed = Arrays.copyOf(ltp.longUsed);
 	}
 
 }

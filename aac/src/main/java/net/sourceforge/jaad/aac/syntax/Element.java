@@ -13,6 +13,10 @@ public interface Element {
 		public static Type get(int i) {return VALUES.get(i);}
 	}
 
+	static Type readType(BitStream in) {
+		return Type.get(in.readBits(3));
+	}
+
 	abstract class InstanceTag {
 
 		protected final int id;

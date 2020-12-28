@@ -1,7 +1,7 @@
 package net.sourceforge.jaad.aac;
 
+import net.sourceforge.jaad.aac.filterbank.FilterBank;
 import net.sourceforge.jaad.aac.syntax.BitStream;
-import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.PCE;
 
 import static net.sourceforge.jaad.aac.SampleFrequency.SF_NONE;
@@ -68,7 +68,7 @@ public class DecoderConfig {
 	}
 
 	public int getFrameLength() {
-		return frameLengthFlag ? Constants.WINDOW_SMALL_LEN_LONG : Constants.WINDOW_LEN_LONG;
+		return frameLengthFlag ? FilterBank.WINDOW_SMALL_LEN_LONG : FilterBank.WINDOW_LEN_LONG;
 	}
 
 	public int getSampleLength() {

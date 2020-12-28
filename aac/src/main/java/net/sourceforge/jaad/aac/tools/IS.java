@@ -2,7 +2,6 @@ package net.sourceforge.jaad.aac.tools;
 
 import net.sourceforge.jaad.aac.huffman.HCB;
 import net.sourceforge.jaad.aac.syntax.CPE;
-import net.sourceforge.jaad.aac.syntax.Constants;
 import net.sourceforge.jaad.aac.syntax.ICSInfo;
 import net.sourceforge.jaad.aac.syntax.ICStream;
 
@@ -10,7 +9,7 @@ import net.sourceforge.jaad.aac.syntax.ICStream;
  * Intensity stereo
  * @author in-somnia
  */
-public final class IS implements Constants, ISScaleTable, HCB {
+public final class IS implements ISScaleTable, HCB {
 
 	private IS() {
 	}

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-public class SyntacticElements implements Constants {
+public class SyntacticElements {
 	static final Logger LOGGER = Logger.getLogger("jaad.SyntacticElements"); //for debugging
 
 	//global properties
@@ -56,33 +56,35 @@ public class SyntacticElements implements Constants {
 	public void decode(BitStream in) {
 		final int start = in.getPosition(); //should be 0
 
-		int type;
 		if(!config.getProfile().isErrorResilientProfile()) {
-			while((type = in.readBits(3))!=ELEMENT_END) {
-				switch(type) {
-					case ELEMENT_SCE:
+
+			loop: do {
+				switch(Element.readType(in)) {
+					case SCE:
 						decode(SCE.TAGS, in);
 						break;
-					case ELEMENT_CPE:
+					case CPE:
 						decode(CPE.TAGS, in);
 						break;
-					case ELEMENT_CCE:
+					case CCE:
 						decode(CCE.TAGS, in);
 						break;
-					case ELEMENT_LFE:
+					case LFE:
 						decode(LFE.TAGS, in);
 						break;
-					case ELEMENT_DSE:
+					case DSE:
 						decode(DSE.TAGS, in);
 						break;
-					case ELEMENT_PCE:
+					case PCE:
 						decode(PCE.TAGS, in);
 						break;
-					case ELEMENT_FIL:
+					case FIL:
 						decodeFIL(in);
 						break;
+					case END:
+						break loop;
 				}
-			}
+			} while(true);
 		}
 		else {
 			//error resilient raw data block
