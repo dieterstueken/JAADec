@@ -10,7 +10,9 @@ import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SBR implements HuffmanTables {
+import static net.sourceforge.jaad.aac.sbr.HuffmanTables.*;
+
+public class SBR {
 
 	static final Logger LOGGER = Logger.getLogger("jaad.aac.sbr.SBR"); //for debugging
 
