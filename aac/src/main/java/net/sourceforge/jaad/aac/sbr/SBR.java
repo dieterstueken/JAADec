@@ -1,5 +1,6 @@
 package net.sourceforge.jaad.aac.sbr;
 
+import net.sourceforge.jaad.aac.DecoderConfig;
 import net.sourceforge.jaad.aac.SampleFrequency;
 import net.sourceforge.jaad.aac.SampleRate;
 import net.sourceforge.jaad.aac.ps.PS;
@@ -41,7 +42,6 @@ public class SBR {
 	}
 
 	int rate;
-	boolean just_seeked;
 	int ret;
 
 	boolean[] amp_res = new boolean[2];
@@ -143,9 +143,8 @@ public class SBR {
 	boolean ps_used;
 	boolean psResetFlag;
 
-	/* to get it compiling */
-	/* we'll see during the coding of all the tools, whether
-	 these are all used or not.
+	/* to get it compiling
+	/* we'll see during the coding of all the tools, whether these are all used or not.
 	 */
 	boolean bs_header_flag;
 	int bs_crc_flag;
@@ -180,6 +179,11 @@ public class SBR {
 	int[] bs_num_rel_1 = new int[2];
 	int[][] bs_df_env = new int[2][9];
 	int[][] bs_df_noise = new int[2][3];
+
+	public static SBR open(DecoderConfig config, boolean stereo) {
+		config.setSBRPresent();
+		return new SBR(config.isSmallFrameUsed(), stereo, config.getOutputFrequency(), config.isSBRDownSampled());
+	}
 
 	public SBR(boolean smallFrames, boolean stereo, SampleRate sample_rate, boolean downSampledSBR) {
 		this.downSampledSBR = downSampledSBR;
@@ -338,29 +342,29 @@ public class SBR {
 		int k2;
 
 		/* calculate the Master Frequency Table */
-		this.k0 = FBT.qmf_start_channel(start_freq, samplerate_mode, this.sample_rate);
-		k2 = FBT.qmf_stop_channel(stop_freq, this.sample_rate, this.k0);
+		k0 = FBT.qmf_start_channel(start_freq, samplerate_mode, this.sample_rate);
+		k2 = FBT.qmf_stop_channel(stop_freq, this.sample_rate, k0);
 
 		/* check k0 and k2 */
 		if(this.sample_rate.getFrequency()>=48000) {
-			if((k2-this.k0)>32)
+			if((k2-k0)>32)
 				result += 1;
 		}
 		else if(this.sample_rate.getFrequency()<=32000) {
-			if((k2-this.k0)>48)
+			if((k2-k0)>48)
 				result += 1;
 		}
 		else { /* (sbr.sample_rate == 44100) */
 
-			if((k2-this.k0)>45)
+			if((k2-k0)>45)
 				result += 1;
 		}
 
 		if(freq_scale==0) {
-			result += FBT.master_frequency_table_fs0(this, this.k0, k2, alter_scale);
+			result += FBT.master_frequency_table_fs0(this, k0, k2, alter_scale);
 		}
 		else {
-			result += FBT.master_frequency_table(this, this.k0, k2, freq_scale, alter_scale);
+			result += FBT.master_frequency_table(this, k0, k2, freq_scale, alter_scale);
 		}
 		result += FBT.derived_frequency_table(this, xover_band, k2);
 
@@ -401,7 +405,7 @@ public class SBR {
 		/* first frame should have a header */
 		//if (!(sbr.frame == 0 && sbr.bs_header_flag == 0))
 		if(this.header_count!=0) {
-			if(this.Reset||(this.bs_header_flag&&this.just_seeked)) {
+			if(this.Reset) {
 				int rt = calc_sbr_tables(this.bs_start_freq, this.bs_stop_freq,
 					this.bs_samplerate_mode, this.bs_freq_scale,
 					this.bs_alter_scale, this.bs_xover_band);
@@ -423,7 +427,7 @@ public class SBR {
 				 */
 			/* to be on the safe side, calculate old sbr tables in case of error */
 			if((result>0)
-				&&(this.Reset||(this.bs_header_flag&&this.just_seeked))) {
+				&&(this.Reset)) {
 				calc_sbr_tables(saved_start_freq, saved_stop_freq,
 					saved_samplerate_mode, saved_freq_scale,
 					saved_alter_scale, saved_xover_band);
@@ -1098,7 +1102,7 @@ public class SBR {
 			}
 		}
 
-		if(this.just_seeked||dont_process) {
+		if(dont_process) {
 			for(l = 0; l<this.numTimeSlotsRate; l++) {
 				for(k = 0; k<32; k++) {
 					X[l][k][0] = this.Xsbr[ch][l+this.tHFAdj][k][0];
@@ -1143,8 +1147,7 @@ public class SBR {
 		return ret;
 	}
 
-	public int process(float[] left_chan, float[] right_chan,
-		boolean just_seeked) {
+	public int process(float[] left_chan, float[] right_chan) {
 		boolean dont_process = false;
 		int ret = 0;
 		float[][][] X = new float[MAX_NTSR][64][2];
@@ -1160,13 +1163,6 @@ public class SBR {
 			/* Re-activate reset for next frame */
 			if(this.ret!=0&&this.Reset)
 				this.bs_start_freq_prev = -1;
-		}
-
-		if(just_seeked) {
-			this.just_seeked = true;
-		}
-		else {
-			this.just_seeked = false;
 		}
 
 		this.ret += sbr_process_channel(left_chan, X, 0, dont_process);
@@ -1187,9 +1183,6 @@ public class SBR {
 			qmfs[1].sbr_qmf_synthesis_64(this, X, right_chan);
 		}
 
-		if(this.bs_header_flag)
-			this.just_seeked = false;
-
 		if(this.header_count!=0&&this.ret==0) {
 			ret = sbr_save_prev_data(0);
 			if(ret!=0)
@@ -1207,8 +1200,7 @@ public class SBR {
 		return 0;
 	}
 
-	public int process(float[] channel,
-		boolean just_seeked) {
+	public int process(float[] channel) {
 		boolean dont_process = false;
 		int ret = 0;
 		float[][][] X = new float[MAX_NTSR][64][2];
@@ -1226,13 +1218,6 @@ public class SBR {
 				this.bs_start_freq_prev = -1;
 		}
 
-		if(just_seeked) {
-			this.just_seeked = true;
-		}
-		else {
-			this.just_seeked = false;
-		}
-
 		this.ret += sbr_process_channel(channel, X, 0, dont_process);
 		/* subband synthesis */
 		if(downSampledSBR) {
@@ -1241,9 +1226,6 @@ public class SBR {
 		else {
 			qmfs[0].sbr_qmf_synthesis_64(this, X, channel);
 		}
-
-		if(this.bs_header_flag)
-			this.just_seeked = false;
 
 		if(this.header_count!=0&&this.ret==0) {
 			ret = sbr_save_prev_data(0);
@@ -1258,8 +1240,7 @@ public class SBR {
 		return 0;
 	}
 
-	public int processPS(float[] left_channel, float[] right_channel,
-		boolean just_seeked) {
+	public int processPS(float[] left_channel, float[] right_channel) {
 		int l, k;
 		boolean dont_process = false;
 		int ret = 0;
@@ -1277,13 +1258,6 @@ public class SBR {
 			/* Re-activate reset for next frame */
 			if(this.ret!=0&&this.Reset)
 				this.bs_start_freq_prev = -1;
-		}
-
-		if(just_seeked) {
-			this.just_seeked = true;
-		}
-		else {
-			this.just_seeked = false;
 		}
 
 		if(this.qmfs[1]==null) {
@@ -1312,9 +1286,6 @@ public class SBR {
 			qmfs[0].sbr_qmf_synthesis_64(this, X_left, left_channel);
 			qmfs[1].sbr_qmf_synthesis_64(this, X_right, right_channel);
 		}
-
-		if(this.bs_header_flag)
-			this.just_seeked = false;
 
 		if(this.header_count!=0&&this.ret==0) {
 			ret = sbr_save_prev_data(0);

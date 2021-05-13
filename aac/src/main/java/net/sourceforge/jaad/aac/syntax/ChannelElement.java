@@ -64,10 +64,8 @@ abstract public class ChannelElement implements Element {
 			return;
 		}
 
-   		if(sbr==null) {
-			config.setSBRPresent();
-   			sbr = new SBR(config.isSmallFrameUsed(), isChannelPair(), config.getOutputFrequency(), config.isSBRDownSampled());
-   		}
+   		if(sbr==null)
+   			sbr = SBR.open(config, isChannelPair());
 
    		sbr.decode(in, crc);
    		if(sbr.isPSUsed())

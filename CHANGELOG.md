@@ -178,3 +178,6 @@ upgrade to gradle 6.7.1
 Introduced a Speaker enumeration. Each ChannelConfiguration provides a list of speakers now.
 To simplify lookup by channel count an additional (but invalid) ChannelConfiguration for 7 Speakers was inserted. 
 
+**2020-12-28**
+
+removed unused justSeek flag from SBR

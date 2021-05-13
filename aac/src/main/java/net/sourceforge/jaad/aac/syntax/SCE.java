@@ -122,11 +122,11 @@ class SCE extends ChannelElement {
 
 			if(sbr.isPSUsed()) {
 				float[] dataR = getDataR();
-				getSBR().processPS(dataL, dataR, false);
+				getSBR().processPS(dataL, dataR);
 				channelData.add(dataR);
 			}
 			else {
-				getSBR().process(dataL, false);
+				getSBR().process(dataL);
 				channelData.add(dataL);
 			}
 		} else if(dataL.length!=config.getFrameLength()) {

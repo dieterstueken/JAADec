@@ -14,6 +14,20 @@ public interface BitStream {
 
     int readBits(int n);
 
+    default byte readByte(int n) {
+        if(n>8)
+            throw new IllegalArgumentException();
+
+        return (byte) readBits(n);
+    }
+
+    default short readShort(int n) {
+        if(n>16)
+            throw new IllegalArgumentException();
+
+        return (short) readBits(n);
+    }
+
     int readBit();
 
     boolean readBool();

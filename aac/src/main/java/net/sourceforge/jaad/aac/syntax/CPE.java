@@ -194,7 +194,7 @@ public class CPE extends ChannelElement {
 			if(dataL.length==config.getFrameLength())
 				LOGGER.log(Level.WARNING, "SBR data present, but buffer has normal size!");
 
-			getSBR().process(dataL, dataR, false);
+			getSBR().process(dataL, dataR);
 		} else if(dataL.length!=config.getFrameLength()) {
 			SBR.upsample(dataL);
 			SBR.upsample(dataR);
